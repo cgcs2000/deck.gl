@@ -8,12 +8,12 @@
 // * Optionally, error checking could be applied, but ideally should leverage
 //   non-JSON specific mechanisms like prop types.
 
-import {MapView, FirstPersonView, OrbitView, OrthographicView} from '@deck.gl/core';
+import {MapView, FirstPersonView, OrbitView, OrthographicView} from '@cgcs2000/deck.gl.core';
 import JSONLayer from '../json-layer/json-layer';
 import {get} from '../utils/get';
 import {csvParseRows} from 'd3-dsv';
 
-// Support all `@deck.gl/core` Views by default
+// Support all `@cgcs2000/deck.gl.core` Views by default
 const DEFAULT_VIEW_CATALOG = {MapView, FirstPersonView, OrbitView, OrthographicView};
 
 const DEFAULT_MAP_PROPS = {

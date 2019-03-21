@@ -1,6 +1,6 @@
 import React, {createElement} from 'react';
 import {inheritsFrom} from './inherits-from';
-import {Layer, View} from '@deck.gl/core';
+import {Layer, View} from '@cgcs2000/deck.gl.core';
 
 // recursively wrap render callbacks in `View`
 function wrapInView(node) {

@@ -35,7 +35,7 @@ import {projectPosition, getWorldPosition} from '../shaderlib/project/project-fu
 import Component from '../lifecycle/component';
 import LayerState from './layer-state';
 
-import {worldToPixels} from 'viewport-mercator-project';
+import {worldToPixels} from '@cgcs2000/viewport-cgcs2000-project';
 
 const LOG_PRIORITY_UPDATE = 1;
 

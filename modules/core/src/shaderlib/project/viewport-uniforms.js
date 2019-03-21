@@ -37,7 +37,7 @@ const IDENTITY_MATRIX = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 const DEFAULT_PIXELS_PER_UNIT2 = [0, 0, 0];
 const DEFAULT_COORDINATE_ORIGIN = [0, 0, 0];
 
-// Based on viewport-mercator-project/test/fp32-limits.js
+// Based on @cgcs2000/viewport-cgcs2000-project/test/fp32-limits.js
 export const LNGLAT_AUTO_OFFSET_ZOOM_THRESHOLD = 12;
 
 const getMemoizedViewportUniforms = memoize(calculateViewportUniforms);

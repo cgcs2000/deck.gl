@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import {Layer, log} from '@deck.gl/core';
+import {Layer, log} from '@cgcs2000/deck.gl.core';
 import GL from 'luma.gl/constants';
 import {Model, CylinderGeometry, fp64} from 'luma.gl';
 const {fp64LowPart} = fp64;

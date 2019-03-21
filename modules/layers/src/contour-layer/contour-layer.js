@@ -23,7 +23,7 @@ import {
   CompositeLayer,
   _GPUGridAggregator as GPUGridAggregator,
   _pointToDensityGridData as pointToDensityGridData
-} from '@deck.gl/core';
+} from '@cgcs2000/deck.gl.core';
 import {default as LineLayer} from '../line-layer/line-layer';
 import {default as SolidPolygonLayer} from '../solid-polygon-layer/solid-polygon-layer';
 import {generateContours} from './contour-utils';

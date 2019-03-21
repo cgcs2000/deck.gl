@@ -25,7 +25,7 @@ import {
   _GPUGridAggregator as GPUGridAggregator,
   AGGREGATION_OPERATION,
   log
-} from '@deck.gl/core';
+} from '@cgcs2000/deck.gl.core';
 const {defaultColorRange} = experimental;
 
 import GL from 'luma.gl/constants';

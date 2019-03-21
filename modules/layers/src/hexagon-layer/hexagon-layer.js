@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import {CompositeLayer, log, experimental} from '@deck.gl/core';
+import {CompositeLayer, log, experimental} from '@cgcs2000/deck.gl.core';
 import HexagonCellLayer from '../hexagon-cell-layer/hexagon-cell-layer';
 
 const {BinSorter, getQuantizeScale, getLinearScale, defaultColorRange} = experimental;

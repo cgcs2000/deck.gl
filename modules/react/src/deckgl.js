@@ -20,7 +20,7 @@
 
 import React, {createElement} from 'react';
 import PropTypes from 'prop-types';
-import {Deck, View, log} from '@deck.gl/core';
+import {Deck, View, log} from '@cgcs2000/deck.gl.core';
 import extractJSXLayers from './utils/extract-jsx-layers';
 import {inheritsFrom} from './utils/inherits-from';
 import evaluateChildren from './utils/evaluate-children';

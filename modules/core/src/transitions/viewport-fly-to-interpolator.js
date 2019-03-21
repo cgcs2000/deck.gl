@@ -1,7 +1,7 @@
 import TransitionInterpolator from './transition-interpolator';
 import {lerp} from 'math.gl';
 
-import {flyToViewport} from 'viewport-mercator-project';
+import {flyToViewport} from '@cgcs2000/viewport-cgcs2000-project';
 
 const LINEARLY_INTERPOLATED_PROPS = ['bearing', 'pitch'];
 

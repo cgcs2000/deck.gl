@@ -24,7 +24,7 @@
 // - 3D surfaces (top and sides only)
 // - 3D wireframes (not yet)
 import * as Polygon from './polygon';
-import {experimental} from '@deck.gl/core';
+import {experimental} from '@cgcs2000/deck.gl.core';
 const {Tesselator} = experimental;
 import {fp64 as fp64Module} from 'luma.gl';
 const {fp64LowPart} = fp64Module;

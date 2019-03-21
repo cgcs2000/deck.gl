@@ -5,9 +5,9 @@
 
 /* global window, global */
 const lumaGL = require('luma.gl');
-const deckGLCore = require('@deck.gl/core');
-const deckGLCoreLayers = require('@deck.gl/layers');
-const MapboxLayer = require('@deck.gl/mapbox').MapboxLayer;
+const deckGLCore = require('@cgcs2000/deck.gl.core');
+const deckGLCoreLayers = require('@cgcs2000/deck.gl.layers');
+const MapboxLayer = require('@cgcs2000/deck.gl.mapbox').MapboxLayer;
 
 const DeckGL = require('./deckgl').default;
 

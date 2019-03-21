@@ -1,7 +1,7 @@
 // All utility mehtods needed to implement Marching Squres algorithm
 // Ref: https://en.wikipedia.org/wiki/Marching_squares
 
-import {log} from '@deck.gl/core';
+import {log} from '@cgcs2000/deck.gl.core';
 import {ISOLINES_CODE_OFFSET_MAP, ISOBANDS_CODE_OFFSET_MAP} from './marching-squares-codes';
 
 export const CONTOUR_TYPE = {

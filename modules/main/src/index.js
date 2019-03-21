@@ -68,10 +68,10 @@ export {
   _EffectManager,
   _Effect,
   _ReflectionEffect
-} from '@deck.gl/core';
+} from '@cgcs2000/deck.gl.core';
 
 // EXPERIMENTAL CORE LIB CLASSES (May change in minor version bumps, use at your own risk)
-import {experimental as CoreExperimental} from '@deck.gl/core';
+import {experimental as CoreExperimental} from '@cgcs2000/deck.gl./core';
 
 // Experimental Data Accessor Helpers
 // INTERNAL - TODO remove from experimental exports
@@ -118,13 +118,13 @@ export {
   PolygonLayer,
   GeoJsonLayer,
   TextLayer
-} from '@deck.gl/layers';
+} from '@cgcs2000/deck.gl.layers';
 
 //
 // REACT BINDINGS PACKAGE
 //
 
-export {default, DeckGL} from '@deck.gl/react';
+export {default, DeckGL} from '@cgcs2000/deck.gl.react';
 
 //
 // EXPERIMENTAL EXPORTS

@@ -1,5 +1,5 @@
 {
-  "name": "@deck.gl/lite",
+  "name": "@cgcs2000/deck.gl.lite",
   "description": "Scripting with deck.gl",
   "license": "MIT",
   "version": "0.0.0",
@@ -22,5 +22,11 @@
   },
   "devDependencies": {
     "react-map-gl": "^3.3.7"
+  },
+  "dependencies": {
+    "@cgcs2000/deck.gl.core": "^6.4.7-a",
+    "@cgcs2000/deck.gl.layers": "^6.4.7",
+    "@cgcs2000/deck.gl.mapbox": "^6.4.7-a",
+    "webpack": "^4.29.6"
   }
 }

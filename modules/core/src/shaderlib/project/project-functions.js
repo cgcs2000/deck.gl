@@ -7,7 +7,7 @@ import {LNGLAT_AUTO_OFFSET_ZOOM_THRESHOLD} from './viewport-uniforms';
 
 import * as vec4 from 'gl-matrix/vec4';
 import * as vec3 from 'gl-matrix/vec3';
-import {getDistanceScales, addMetersToLngLat} from 'viewport-mercator-project';
+import {getDistanceScales, addMetersToLngLat} from '@cgcs2000/viewport-cgcs2000-project';
 
 // In project.glsl, offset modes calculate z differently from LNG_LAT mode.
 // offset modes apply the y adjustment (pixelsPerMeter2) when projecting z

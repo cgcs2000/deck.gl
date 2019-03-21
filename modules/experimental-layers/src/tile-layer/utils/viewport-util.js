@@ -1,4 +1,4 @@
-import {lngLatToWorld} from 'viewport-mercator-project';
+import {lngLatToWorld} from '@cgcs2000/viewport-cgcs2000-project';
 
 const TILE_SIZE = 512;
 

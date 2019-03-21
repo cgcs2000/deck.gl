@@ -1,4 +1,4 @@
-import {Deck} from '@deck.gl/core';
+import {Deck} from '@cgcs2000/deck.gl.core';
 import {withParameters} from 'luma.gl';
 
 export function getDeckInstance({map, gl, deck}) {

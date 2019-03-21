@@ -8,14 +8,14 @@ const ROOT = resolve(PACKAGE_ROOT, '../..');
 // babel-plugin-version-inline uses the package version from the working directory
 // Therefore we need to manually import the correct version from the core
 // This is called in prepublishOnly, after lerna bumps the package versions
-const CORE_VERSION = require(resolve(ROOT, 'node_modules/@deck.gl/core/package.json')).version;
+const CORE_VERSION = require(resolve(ROOT, 'node_modules/@cgcs2000/deck.gl.core/package.json')).version;
 
 const config = {
   resolve: {
     alias: {
-      '@deck.gl/core': resolve(ROOT, 'node_modules/@deck.gl/core/src'),
-      '@deck.gl/layers': resolve(ROOT, 'node_modules/@deck.gl/layers/src'),
-      '@deck.gl/mapbox': resolve(ROOT, 'node_modules/@deck.gl/mapbox/src')
+      '@deck.gl/core': resolve(ROOT, 'node_modules/@cgcs2000/deck.gl.core/src'),
+      '@deck.gl/layers': resolve(ROOT, 'node_modules/@cgcs2000/deck.gl.layers/src'),
+      '@deck.gl/mapbox': resolve(ROOT, 'node_modules/@cgcs2000/deck.gl.mapbox/src')
     }
   },
 

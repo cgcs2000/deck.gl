@@ -31,7 +31,7 @@ import {
   worldToLngLat,
   worldToPixels,
   pixelsToWorld
-} from 'viewport-mercator-project';
+} from '@cgcs2000/viewport-cgcs2000-project';
 
 import assert from '../utils/assert';
 

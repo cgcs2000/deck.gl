@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import {CompositeLayer, experimental} from '@deck.gl/core';
+import {CompositeLayer, experimental} from '@cgcs2000/deck.gl.core';
 const {BinSorter, defaultColorRange, getQuantizeScale, getLinearScale} = experimental;
 
 import GridCellLayer from '../grid-cell-layer/grid-cell-layer';

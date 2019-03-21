@@ -1,7 +1,7 @@
 import {clamp} from 'math.gl';
 import Controller from './controller';
 import ViewState from './view-state';
-import WebMercatorViewport, {normalizeViewportProps} from 'viewport-mercator-project';
+import WebMercatorViewport, {normalizeViewportProps} from '@cgcs2000/viewport-cgcs2000-project';
 import assert from '../utils/assert';
 import LinearInterpolator from '../transitions/linear-interpolator';
 import {TRANSITION_EVENTS} from './transition-manager';
