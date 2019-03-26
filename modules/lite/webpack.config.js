@@ -13,12 +13,11 @@ const CORE_VERSION = require(resolve(ROOT, 'node_modules/@cgcs2000/deck.gl.core/
 const config = {
   resolve: {
     alias: {
-      '@deck.gl/core': resolve(ROOT, 'node_modules/@cgcs2000/deck.gl.core/src'),
-      '@deck.gl/layers': resolve(ROOT, 'node_modules/@cgcs2000/deck.gl.layers/src'),
-      '@deck.gl/mapbox': resolve(ROOT, 'node_modules/@cgcs2000/deck.gl.mapbox/src')
+      '@cgcs2000/deck.gl.core': resolve(ROOT, 'node_modules/@cgcs2000/deck.gl.core/src'),
+      '@cgcs2000/deck.gl.layers': resolve(ROOT, 'node_modules/@cgcs2000/deck.gl.layers/src'),
+      '@cgcs2000/deck.gl.mapbox': resolve(ROOT, 'node_modules/@cgcs2000/deck.gl.mapbox/src')
     }
   },
-
   module: {
     rules: [
       {

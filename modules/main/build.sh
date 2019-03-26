@@ -3,7 +3,8 @@
 
 set -e
 
-export PATH=$PATH:node_modules/.bin
+PATH=$PATH:node_modules/.bin
+export PATH
 PACKAGE_DIR=`pwd`
 
 BUNDLE_SRC_DIR=../lite

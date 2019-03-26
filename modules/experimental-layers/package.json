@@ -2,7 +2,7 @@
   "name": "@cgcs2000/deck.gl.experimental-layers",
   "description": "Experimental layers for deck.gl",
   "license": "MIT",
-  "version": "6.4.7",
+  "version": "6.4.7-a",
   "publishConfig": {
     "access": "public"
   },
@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@babel/cli": "^7.2.3",
-    "@cgcs2000/deck.gl.core": "^6.4.7",
-    "@cgcs2000/deck.gl.layers": "^6.4.7"
+    "@cgcs2000/deck.gl.core": "^6.4.7-a",
+    "@cgcs2000/deck.gl.layers": "^6.4.7-a"
   }
 }

@@ -1,4 +1,4 @@
-import {Layer} from '@deck.gl/core';
+import {Layer} from '@cgcs2000/deck.gl.core';
 
 import {Model, Geometry} from 'luma.gl';
 

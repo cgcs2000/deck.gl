@@ -18,12 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import {} from '@deck.gl/core';
+import {} from '@cgcs2000/deck.gl.core';
 import {
   CompositeLayer,
   _GPUGridAggregator as GPUGridAggregator,
   _pointToDensityGridData as pointToDensityGridData
-} from '@deck.gl/core';
+} from '@cgcs2000/deck.gl.core';
 
 import GPUGridCellLayer from './gpu-grid-cell-layer';
 

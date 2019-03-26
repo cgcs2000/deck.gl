@@ -38,7 +38,7 @@ const DEFAULT_PIXELS_PER_UNIT2 = [0, 0, 0];
 const DEFAULT_COORDINATE_ORIGIN = [0, 0, 0];
 
 // Based on @cgcs2000/viewport-cgcs2000-project/test/fp32-limits.js
-export const LNGLAT_AUTO_OFFSET_ZOOM_THRESHOLD = 12;
+export const LNGLAT_AUTO_OFFSET_ZOOM_THRESHOLD = 6;
 
 const getMemoizedViewportUniforms = memoize(calculateViewportUniforms);
 

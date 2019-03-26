@@ -71,7 +71,7 @@ export {
 } from '@cgcs2000/deck.gl.core';
 
 // EXPERIMENTAL CORE LIB CLASSES (May change in minor version bumps, use at your own risk)
-import {experimental as CoreExperimental} from '@cgcs2000/deck.gl./core';
+import {experimental as CoreExperimental} from '@cgcs2000/deck.gl.core';
 
 // Experimental Data Accessor Helpers
 // INTERNAL - TODO remove from experimental exports
