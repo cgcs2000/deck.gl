@@ -19,7 +19,7 @@
 // THE SOFTWARE.
 
 import test from 'tape-catch';
-import {padArray} from '@deck.gl/core/utils/array-utils';
+import {padArray} from '@cgcs2000/deck.gl.core/utils/array-utils';
 
 const PAD_ARRAY_TEST_CASES = [
   {

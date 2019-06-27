@@ -4,7 +4,7 @@ import {render} from 'react-dom';
 import DeckGL, {ScatterplotLayer, ArcLayer} from 'deck.gl';
 import {StaticMap} from 'react-map-gl';
 
-import {MapboxLayer} from '@deck.gl/mapbox';
+import {MapboxLayer} from '@cgcs2000/deck.gl.mapbox';
 
 import {mapboxBuildingLayer, deckPoiLayer, deckRouteLayer} from './layers';
 

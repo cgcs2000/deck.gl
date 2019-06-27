@@ -3,8 +3,8 @@ import React, {Component} from 'react';
 import {render} from 'react-dom';
 import {StaticMap} from 'react-map-gl';
 import DeckGL from 'deck.gl';
-import ArcBrushingLayer from './arc-brushing-layer/arc-brushing-layer';
-import ScatterplotBrushingLayer from './scatterplot-brushing-layer/scatterplot-brushing-layer';
+import ArcBrushingLayer from './brushing-layers/arc-brushing-layer';
+import ScatterplotBrushingLayer from './brushing-layers/scatterplot-brushing-layer';
 import {scaleLinear} from 'd3-scale';
 
 // Set your mapbox token here
@@ -33,7 +33,7 @@ const SOURCE_COLOR = [166, 3, 3];
 // migrate in
 const TARGET_COLOR = [35, 181, 184];
 
-export const INITIAL_VIEW_STATE = {
+const INITIAL_VIEW_STATE = {
   longitude: -100,
   latitude: 40.7,
   zoom: 3,
@@ -225,7 +225,7 @@ export class App extends Component {
       new ArcBrushingLayer({
         id: 'arc',
         data: arcs,
-        getStrokeWidth: strokeWidth,
+        getWidth: strokeWidth,
         opacity,
         brushRadius,
         enableBrushing: startBrushing,
@@ -239,7 +239,7 @@ export class App extends Component {
   }
 
   render() {
-    const {viewState, controller = true, baseMap = true} = this.props;
+    const {mapStyle = 'mapbox://styles/mapbox/light-v9'} = this.props;
 
     return (
       <div onMouseMove={this._onMouseMove} onMouseLeave={this._onMouseLeave}>
@@ -248,17 +248,14 @@ export class App extends Component {
         <DeckGL
           layers={this._renderLayers()}
           initialViewState={INITIAL_VIEW_STATE}
-          viewState={viewState}
-          controller={controller}
+          controller={true}
         >
-          {baseMap && (
-            <StaticMap
-              reuseMaps
-              mapStyle="mapbox://styles/mapbox/light-v9"
-              preventStyleDiffing={true}
-              mapboxApiAccessToken={MAPBOX_TOKEN}
-            />
-          )}
+          <StaticMap
+            reuseMaps
+            mapStyle={mapStyle}
+            preventStyleDiffing={true}
+            mapboxApiAccessToken={MAPBOX_TOKEN}
+          />
         </DeckGL>
       </div>
     );

@@ -11,7 +11,7 @@ Summary:
 * auto updates attributes with registered updater functions
 * allows overriding with application supplied buffers
 
-For more information consult the [Attribute Management](/docs/developer-guide/attribute-management.md) article.
+For more information consult the [Attribute Management](/docs/developer-guide/custom-layers/attribute-management.md) article.
 
 
 ## Static Methods
@@ -61,7 +61,7 @@ Takes a single parameter as a map of attribute descriptor objects:
 * keys are attribute names
 * values are objects with attribute definitions:
   + `size` (Number) - number of elements per object
-  + `accessor` (String | Array of strings) - accessor name(s) that will
+  + `accessor` (String | Array of strings | Function) - accessor name(s) that will
     trigger an update of this attribute when changed. Used with
     [`updateTriggers`](/docs/api-reference/layer.md#-updatetriggers-object-optional-).
   + `update` (Function) - the function to be called when data changes
@@ -73,6 +73,13 @@ Takes a single parameter as a map of attribute descriptor objects:
     (same value applied to every vertex). Default to `false`.
   + `noAlloc` (Boolean, optional) - if this attribute should not be
     automatically allocated. Default to `false`.
+  + `shaderAttributes` (Object, optional) - If this attribute maps to multiple
+    attributes in the vertex shader, that mapping can be defined here. All
+    `shaderAttributes` will share a single buffer created based on the `size`
+    parameter. This can be used to interleave attributes. Shader attribute properties are:
+    * `size` (Number) - Number of elements per object.
+    * `offset` (Number) - Offset of the initial element.
+    * `stride` (Number) - Stride between elements.
 
 ##### `addInstanced`
 
@@ -95,11 +102,16 @@ Mark an attribute as need update.
 Parameters:
 
 * `name` (String) - Either the name of the attribute, or the name of an accessor. If an name of accessor is provided, all attributes with that accessor are invalidated.
+* `dataRange` (Object, optional) - A partial range of the attribute to invalidate, in the shape of `{startRow, endRow}`. Start (included) and end (excluded) are indices into the data array. If not provided, recalculate the  attribute for all data.
 
 
 ##### `invalidateAll`
 
 Mark all attributes as need update.
+
+Parameters:
+
+* `dataRange` (Object, optional) - A partial range of the attributes to invalidate, in the shape of `{startRow, endRow}`. Start (included) and end (excluded) are indices into the data array. If not provided, recalculate the  attributes for all data.
 
 
 ##### `update`
@@ -111,6 +123,8 @@ attributeManager.update({
     data,
     numInstances,
     transitions,
+    startIndex,
+    endIndex,
     props = {},
     buffers = {},
     context = {},
@@ -134,4 +148,4 @@ Notes:
 
 ## Source
 
-[modules/core/src/core/lib/attribute-manager.js](https://github.com/uber/deck.gl/tree/6.4-release/modules/core/src/lib/attribute-manager.js)
+[modules/core/src/lib/attribute-manager.js](https://github.com/uber/deck.gl/tree/7.1-release/modules/core/src/lib/attribute-manager.js)

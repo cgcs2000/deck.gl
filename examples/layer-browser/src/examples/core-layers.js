@@ -1,38 +1,31 @@
+import {experimental} from '@deck.gl/core';
+
 import {
-  COORDINATE_SYSTEM,
   ScatterplotLayer,
   ArcLayer,
   LineLayer,
   // PointCloudLayer,
-  ScreenGridLayer,
+  BitmapLayer,
   IconLayer,
-  GridCellLayer,
-  GridLayer,
-  HexagonCellLayer,
-  HexagonLayer,
+  ColumnLayer,
   GeoJsonLayer,
   PolygonLayer,
   PathLayer,
-  TextLayer,
-  experimental
-  //  ContourLayer
-} from 'deck.gl';
-const {flattenVertices} = experimental;
+  TextLayer
+} from '@deck.gl/layers';
 
-import ContourLayer from '@deck.gl/layers/contour-layer/contour-layer';
+import {
+  CPUGridLayer,
+  HexagonLayer,
+  ContourLayer,
+  ScreenGridLayer
+} from '@deck.gl/aggregation-layers';
+
+const {flattenVertices} = experimental;
 
 // Demonstrate immutable support
 import * as dataSamples from '../data-samples';
 import {parseColor, setOpacity} from '../utils/color';
-
-const LIGHT_SETTINGS = {
-  lightsPosition: [-122.45, 37.66, 8000, -122.0, 38.0, 8000],
-  ambientRatio: 0.3,
-  diffuseRatio: 0.6,
-  specularRatio: 0.4,
-  lightsStrength: [1, 0.0, 0.8, 0.0],
-  numberOfLights: 2
-};
 
 const MARKER_SIZE_MAP = {
   small: 200,
@@ -43,12 +36,25 @@ const MARKER_SIZE_MAP = {
 const ArcLayerExample = {
   layer: ArcLayer,
   getData: () => dataSamples.routes,
+  propTypes: {
+    getHeight: {
+      type: 'number',
+      max: 10
+    },
+    getTilt: {
+      type: 'number',
+      min: -90,
+      max: 90
+    }
+  },
   props: {
     id: 'arcLayer',
     getSourcePosition: d => d.START,
     getTargetPosition: d => d.END,
     getSourceColor: d => [64, 255, 0],
     getTargetColor: d => [0, 128, 200],
+    getHeight: d => 1,
+    getTilt: d => 0,
     pickable: true
   }
 };
@@ -73,7 +79,7 @@ const IconLayerAutoPackingExample = {
   layer: IconLayer,
   getData: () => dataSamples.points,
   props: {
-    id: 'icon-layer-experimental',
+    id: 'icon-layer-auto-packing',
     sizeScale: 24,
     getPosition: d => d.COORDINATES,
     getColor: d => [64, 64, 72],
@@ -88,6 +94,7 @@ const IconLayerAutoPackingExample = {
         };
       }
       return {
+        id: 'warning',
         url: 'data/icon-warning.png',
         width: 128,
         height: 128,
@@ -135,8 +142,7 @@ const GeoJsonLayerExample = {
     lineWidthScale: 10,
     lineWidthMinPixels: 1,
     pickable: true,
-    fp64: true,
-    lightSettings: LIGHT_SETTINGS
+    fp64: true
   }
 };
 
@@ -150,8 +156,7 @@ const GeoJsonLayerExtrudedExample = {
     getLineColor: f => [200, 0, 80],
     extruded: true,
     wireframe: true,
-    pickable: true,
-    lightSettings: LIGHT_SETTINGS
+    pickable: true
   }
 };
 
@@ -178,7 +183,6 @@ const PolygonLayerExample = {
     opacity: 0.8,
     pickable: true,
     lineDashJustified: true,
-    lightSettings: LIGHT_SETTINGS,
     elevationScale: 0.6
   }
 };
@@ -243,8 +247,6 @@ const ScreenGridLayerExample = {
     id: 'screenGridLayer',
     getPosition: d => d.COORDINATES,
     cellSizePixels: 40,
-    minColor: [0, 0, 80, 0],
-    maxColor: [100, 255, 0, 128],
     pickable: false
   }
 };
@@ -258,19 +260,6 @@ const LineLayerExample = {
     getTargetPosition: d => d.END,
     getColor: d => (d.SERVICE === 'WEEKDAY' ? [255, 64, 0] : [255, 200, 0]),
     pickable: true
-  }
-};
-
-const LineLayerExampleNewCoords = {
-  layer: LineLayer,
-  getData: () => dataSamples.routes,
-  props: {
-    id: 'lineLayer',
-    getSourcePosition: d => d.START,
-    getTargetPosition: d => d.END,
-    getColor: d => (d.SERVICE === 'WEEKDAY' ? [255, 64, 0] : [255, 200, 0]),
-    pickable: true,
-    coordinateSystem: COORDINATE_SYSTEM.LNGLAT_EXPERIMENTAL
   }
 };
 
@@ -291,18 +280,17 @@ const ScatterplotLayerExample = {
   }
 };
 
-const GridCellLayerExample = {
-  layer: GridCellLayer,
+const ColumnLayerExample = {
+  layer: ColumnLayer,
   props: {
-    id: 'gridCellLayer',
+    id: 'columnLayer',
     data: dataSamples.worldGrid.data,
-    cellSize: dataSamples.worldGrid.cellSize,
     extruded: true,
     pickable: true,
+    radius: 1000,
     opacity: 1,
-    getColor: d => [245, 166, d.value * 255, 255],
-    getElevation: d => d.value * 5000,
-    lightSettings: LIGHT_SETTINGS
+    getFillColor: d => [245, 166, d.value * 255, 255],
+    getElevation: d => d.value * 5000
   }
 };
 
@@ -330,7 +318,6 @@ const ContourLayerBandsExample = {
     cellSize: 200,
     getPosition: d => d.COORDINATES,
     gpuAggregation: true,
-    zOffsetScale: 5,
     contours: [
       {threshold: [1, 5], color: [255, 0, 0]},
       {threshold: [5, 15], color: [0, 255, 0]},
@@ -367,8 +354,8 @@ function getElevationValue(points) {
   return getMax(points, 'SPACES');
 }
 
-const GridLayerExample = {
-  layer: GridLayer,
+const CPUGridLayerExample = {
+  layer: CPUGridLayer,
   props: {
     id: 'gridLayer',
     data: dataSamples.points,
@@ -378,26 +365,28 @@ const GridLayerExample = {
     pickable: true,
     getPosition: d => d.COORDINATES,
     getColorValue,
-    getElevationValue,
-    lightSettings: LIGHT_SETTINGS
+    getElevationValue
   }
 };
 
-const HexagonCellLayerExample = {
-  layer: HexagonCellLayer,
+/*
+const ColumnLayerExample = {
+  layer: ColumnLayer,
   props: {
-    id: 'hexagonCellLayer',
+    id: 'ColumnLayer',
     data: dataSamples.hexagons,
-    hexagonVertices: dataSamples.hexagons[0].vertices,
+    radius: 100,
+    diskResolution: 6,
     coverage: 1,
     extruded: true,
     pickable: true,
     opacity: 1,
+    getPosition: d => d.centroid,
     getColor: d => [48, 128, d.value * 255, 255],
-    getElevation: d => d.value * 5000,
-    lightSettings: LIGHT_SETTINGS
+    getElevation: d => d.value * 5000
   }
 };
+*/
 
 const HexagonLayerExample = {
   layer: HexagonLayer,
@@ -413,8 +402,7 @@ const HexagonLayerExample = {
     coverage: 1,
     getPosition: d => d.COORDINATES,
     getColorValue,
-    getElevationValue,
-    lightSettings: LIGHT_SETTINGS
+    getElevationValue
   }
 };
 
@@ -503,6 +491,15 @@ const TextLayerExample = {
   }
 };
 
+const BitmapLayerExample = {
+  layer: BitmapLayer,
+  props: {
+    id: 'bitmap-layer',
+    image: 'data/sf-districts.png',
+    bounds: [-122.519, 37.7045, -122.355, 37.829]
+  }
+};
+
 /* eslint-disable quote-props */
 export default {
   'Core Layers - LngLat': {
@@ -515,15 +512,14 @@ export default {
     ScatterplotLayer: ScatterplotLayerExample,
     ArcLayer: ArcLayerExample,
     LineLayer: LineLayerExample,
-    LineLayerNewCoords: LineLayerExampleNewCoords,
     IconLayer: IconLayerExample,
     'IconLayer (auto packing)': IconLayerAutoPackingExample,
-    GridCellLayer: GridCellLayerExample,
-    GridLayer: GridLayerExample,
-    ScreenGridLayer: ScreenGridLayerExample,
-    HexagonCellLayer: HexagonCellLayerExample,
-    HexagonLayer: HexagonLayerExample,
     TextLayer: TextLayerExample,
+    BitmapLayer: BitmapLayerExample,
+    ColumnLayer: ColumnLayerExample,
+    CPUGridLayer: CPUGridLayerExample,
+    ScreenGridLayer: ScreenGridLayerExample,
+    HexagonLayer: HexagonLayerExample,
     ContourLayer: ContourLayerExample,
     'ContourLayer (Bands)': ContourLayerBandsExample
   }

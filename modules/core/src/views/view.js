@@ -16,7 +16,7 @@ export default class View {
 
       // Viewport Options
       projectionMatrix = null, // Projection matrix
-      fovy = 75, // Perspective projection parameters, used if projectionMatrix not supplied
+      fovy = 50, // Perspective projection parameters, used if projectionMatrix not supplied
       near = 0.1, // Distance of near clipping plane
       far = 1000, // Distance of far clipping plane
       modelMatrix = null, // A model matrix to be applied to position, to match the layer props API
@@ -36,6 +36,7 @@ export default class View {
     this.type = type;
 
     this.props = Object.assign({}, props, {
+      id: this.id,
       projectionMatrix,
       fovy,
       near,

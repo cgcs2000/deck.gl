@@ -1,21 +1,29 @@
+/* eslint-disable callback-return */
+/* global window */
 import * as dataSamples from '../../examples/layer-browser/src/data-samples';
 import {parseColor, setOpacity} from '../../examples/layer-browser/src/utils/color';
-import {GPUGridLayer} from '@deck.gl/experimental-layers';
-import GL from 'luma.gl/constants';
-import {OrbitView, OrthographicView, FirstPersonView} from 'deck.gl';
+import {
+  GPUGridLayer,
+  GridLayer
+  // AGGREGATION_OPERATION
+} from '@cgcs2000/deck.gl.aggregation-layers';
+import {
+  COORDINATE_SYSTEM,
+  OrbitView,
+  OrthographicView,
+  FirstPersonView,
+  PostProcessEffect
+} from '@cgcs2000/deck.gl.core';
+import {noise, vignette} from '@luma.gl/effects';
+
+const effect1 = new PostProcessEffect(noise);
+const effect2 = new PostProcessEffect(vignette);
 
 const ICON_ATLAS = './test/render/icon-atlas.png';
 
 import {
-  BezierCurveLayer,
-  MeshLayer,
-  PathOutlineLayer,
-  Arrow2DGeometry
-} from '@deck.gl/experimental-layers';
-
-import {
-  COORDINATE_SYSTEM,
   ScatterplotLayer,
+  BitmapLayer,
   PolygonLayer,
   PathLayer,
   ArcLayer,
@@ -23,28 +31,66 @@ import {
   IconLayer,
   GeoJsonLayer,
   GridCellLayer,
-  GridLayer,
-  ScreenGridLayer,
-  HexagonCellLayer,
-  HexagonLayer,
+  ColumnLayer,
   PointCloudLayer,
   TextLayer
-} from 'deck.gl';
-import ContourLayer from '@deck.gl/layers/contour-layer/contour-layer';
+} from '@cgcs2000/deck.gl.layers';
+import {
+  ContourLayer,
+  ScreenGridLayer,
+  CPUGridLayer,
+  HexagonLayer
+} from '@cgcs2000/deck.gl.aggregation-layers';
+import {H3HexagonLayer, H3ClusterLayer, S2Layer, TripsLayer} from '@cgcs2000/deck.gl.geo-layers';
 
-const LIGHT_SETTINGS = {
-  lightsPosition: [-122.45, 37.66, 8000, -122.0, 38.0, 8000],
-  ambientRatio: 0.3,
-  diffuseRatio: 0.6,
-  specularRatio: 0.4,
-  lightsStrength: [1, 0.0, 0.8, 0.0],
-  numberOfLights: 2
-};
+import * as h3 from 'h3-js';
+
+const IS_HEADLESS = Boolean(window.browserTestDriver_isHeadless);
 
 const MARKER_SIZE_MAP = {
   small: 200,
   medium: 500,
   large: 1000
+};
+
+const GRID_LAYER_INFO = {
+  viewState: {
+    latitude: 37.751537058389985,
+    longitude: -122.42694203247012,
+    zoom: 11.5,
+    pitch: 0,
+    bearing: 0
+  },
+  props: {
+    data: dataSamples.points,
+    cellSize: 200,
+    opacity: 1,
+    extruded: true,
+    pickable: true,
+    getPosition: d => d.COORDINATES
+  },
+  goldenImage: './test/render/golden-images/grid-lnglat.png'
+};
+
+const HEXAGON_LAYER_INFO = {
+  viewState: {
+    latitude: 37.751537058389985,
+    longitude: -122.42694203247012,
+    zoom: 11.5,
+    pitch: 20,
+    bearing: 0
+  },
+  props: {
+    data: dataSamples.points,
+    extruded: true,
+    pickable: true,
+    radius: 1000,
+    opacity: 1,
+    elevationScale: 1,
+    elevationRange: [0, 3000],
+    coverage: 1,
+    getPosition: d => d.COORDINATES
+  }
 };
 
 function getMean(pts, key) {
@@ -66,18 +112,18 @@ function getMax(pts, key) {
 function getColorValue(points) {
   return getMean(points, 'SPACES');
 }
+function getColorWeight(point) {
+  return point.SPACES;
+}
+const colorAggregation = 'mean';
 
 function getElevationValue(points) {
   return getMax(points, 'SPACES');
 }
-
-// experimental layer data
-
-const arrowDataLngLat = [
-  {position: [-122.4111557006836, 37.774879455566406], angle: 0},
-  {position: [-122.41878509521484, 37.75032043457031], angle: 70},
-  {position: [-122.43194580078125, 37.75153732299805], angle: 212}
-];
+function getElevationWeight(point) {
+  return point.SPACES;
+}
+const elevationAggregation = 'max';
 
 export const WIDTH = 800;
 export const HEIGHT = 450;
@@ -130,65 +176,56 @@ export const TEST_CASES = [
         wireframe: true,
         getElevation: 500,
         lineWidthScale: 10,
-        lineWidthMinPixels: 1,
-        lightSettings: LIGHT_SETTINGS
+        lineWidthMinPixels: 1
       })
     ],
-    referenceImageUrl: './test/render/golden-images/first-person.png'
+    goldenImage: './test/render/golden-images/first-person.png'
   },
-  // INFOVIS
+  // Info vis
   {
-    name: 'bezier-curve-2d',
-    views: [new OrthographicView()],
+    name: 'orthographic-64bit',
+    views: new OrthographicView(),
     viewState: {
-      zoom: 1
+      target: [10000 - 122.4, 10000 + 37.75, 0],
+      zoom: 14
     },
     layers: [
-      new BezierCurveLayer({
-        id: 'bezier-curve-2d',
-        data: [
-          {sourcePosition: [0, -100], targetPosition: [0, 100], controlPoint: [50, 0]},
-          {sourcePosition: [0, -100], targetPosition: [0, 100], controlPoint: [-50, 0]},
-          {sourcePosition: [0, -100], targetPosition: [0, 100], controlPoint: [100, 0]},
-          {sourcePosition: [0, -100], targetPosition: [0, 100], controlPoint: [-100, 0]},
-          {sourcePosition: [0, -100], targetPosition: [0, 100], controlPoint: [150, 0]},
-          {sourcePosition: [0, -100], targetPosition: [0, 100], controlPoint: [-150, 0]}
-        ],
+      new ScatterplotLayer({
+        id: 'orthographic-64',
+        opacity: 0.1,
         coordinateSystem: COORDINATE_SYSTEM.IDENTITY,
-        getColor: d => [255, 255, 0, 128],
-        strokeWidth: 5
+        data: dataSamples.getPoints100K().map(p => [p[0] + 10000, p[1] + 10000]),
+        getPosition: d => d,
+        getRadius: 0,
+        radiusMinPixels: 6
       })
     ],
-    referenceImageUrl: './test/render/golden-images/bezier-curve-2d.png'
+    goldenImage: './test/render/golden-images/orthographic-64.png'
   },
   {
     name: 'pointcloud-identity',
     views: [
       new OrbitView({
         fov: 30,
-        near: 0.001,
-        far: 100
+        orbitAxis: 'Y'
       })
     ],
     viewState: {
-      lookAt: [0, 0, 0],
-      distance: 1,
       rotationX: 15,
-      rotationOrbit: 30,
-      orbitAxis: 'Y'
+      rotationOrbit: 30
     },
     layers: [
       new PointCloudLayer({
         id: 'pointcloud-identity',
-        data: [{position: [0, 0.2, 0]}, {position: [-0.2, -0.2, 0]}, {position: [0.2, -0.2, 0]}],
+        data: [{position: [0, 100, 0]}, {position: [-100, -100, 0]}, {position: [100, -100, 0]}],
         coordinateSystem: COORDINATE_SYSTEM.IDENTITY,
         getPosition: d => d.position,
         getNormal: d => [0, 0.5, 0.2],
         getColor: d => [255, 255, 0, 128],
-        radiusPixels: 50
+        pointSize: 50
       })
     ],
-    referenceImageUrl: './test/render/golden-images/pointcloud-identity.png'
+    goldenImage: './test/render/golden-images/pointcloud-identity.png'
   },
   {
     name: 'screengrid-infoviz',
@@ -206,12 +243,10 @@ export const TEST_CASES = [
         coordinateSystem: COORDINATE_SYSTEM.IDENTITY,
         getPosition: d => d,
         cellSizePixels: 40,
-        minColor: [0, 0, 0, 0],
-        maxColor: [0, 255, 0, 255],
         pickable: false
       })
     ],
-    referenceImageUrl: './test/render/golden-images/screengrid-infoviz.png'
+    goldenImage: './test/render/golden-images/screengrid-infoviz.png'
   },
   {
     name: 'contour-infoviz',
@@ -239,7 +274,7 @@ export const TEST_CASES = [
         gpuAggregation: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/contour-infoviz.png'
+    goldenImage: './test/render/golden-images/contour-infoviz.png'
   },
   {
     name: 'contour-isobands-infoviz',
@@ -265,7 +300,7 @@ export const TEST_CASES = [
         gpuAggregation: false
       })
     ],
-    referenceImageUrl: './test/render/golden-images/contour-infoviz_border_ref.png'
+    goldenImage: './test/render/golden-images/contour-infoviz_border_ref.png'
   },
 
   // GEOSPATIAL
@@ -283,19 +318,17 @@ export const TEST_CASES = [
         id: 'polygon-lnglat',
         data: dataSamples.polygons,
         getPolygon: f => f,
-        getFillColor: f => [200, 0, 0],
-        getLineColor: f => [0, 0, 0, 255],
-        getLineDashArray: f => [20, 0],
+        getFillColor: [200, 0, 0],
+        getLineColor: [0, 0, 0],
+        getLineDashArray: [20, 0],
         getWidth: f => 20,
-        getElevation: f => 1000,
         opacity: 0.8,
         pickable: true,
-        lineDashJustified: true,
-        lightSettings: LIGHT_SETTINGS,
-        elevationScale: 0.6
+        lineWidthMinPixels: 1,
+        lineDashJustified: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/polygon-lnglat.png'
+    goldenImage: './test/render/golden-images/polygon-lnglat.png'
   },
   {
     name: 'polygon-lnglat-64',
@@ -310,22 +343,18 @@ export const TEST_CASES = [
       new PolygonLayer({
         id: 'polygon-lnglat-64',
         data: dataSamples.polygons,
-        coordinateSystem: COORDINATE_SYSTEM.LNGLAT_DEPRECATED,
-        fp64: true,
         getPolygon: f => f,
-        getFillColor: f => [200, 0, 0],
-        getLineColor: f => [0, 0, 0, 255],
-        getLineDashArray: f => [20, 0],
+        getFillColor: [200, 0, 0],
+        getLineColor: [0, 0, 0],
+        getLineDashArray: [20, 0],
         getWidth: f => 20,
-        getElevation: f => 1000,
         opacity: 0.8,
         pickable: true,
-        lineDashJustified: true,
-        lightSettings: LIGHT_SETTINGS,
-        elevationScale: 0.6
+        lineWidthMinPixels: 1,
+        lineDashJustified: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/polygon-lnglat.png'
+    goldenImage: './test/render/golden-images/polygon-lnglat.png'
   },
   {
     name: 'path-lnglat',
@@ -348,8 +377,7 @@ export const TEST_CASES = [
         pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/path-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/path-lnglat.png'
   },
   {
     name: 'path-lnglat-64',
@@ -374,8 +402,29 @@ export const TEST_CASES = [
         pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/path-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/path-lnglat.png'
+  },
+  {
+    name: 'path-billboard',
+    viewState: {
+      latitude: 37.7518488,
+      longitude: -122.427699,
+      zoom: 16.5,
+      pitch: 55,
+      bearing: -20
+    },
+    layers: [
+      new PathLayer({
+        id: 'path-lnglat',
+        data: dataSamples.zigzag3D,
+        opacity: 0.6,
+        billboard: true,
+        getPath: f => f.path,
+        getColor: f => [128, 0, 0],
+        getWidth: f => 10
+      })
+    ],
+    goldenImage: './test/render/golden-images/path-billboard.png'
   },
   {
     name: 'scatterplot-lnglat',
@@ -391,7 +440,7 @@ export const TEST_CASES = [
         id: 'scatterplot-lnglat',
         data: dataSamples.points,
         getPosition: d => d.COORDINATES,
-        getColor: d => [255, 128, 0],
+        getFillColor: d => [255, 128, 0],
         getRadius: d => d.SPACES,
         opacity: 1,
         pickable: true,
@@ -400,7 +449,7 @@ export const TEST_CASES = [
         radiusMaxPixels: 30
       })
     ],
-    referenceImageUrl: './test/render/golden-images/scatterplot-lnglat.png'
+    goldenImage: './test/render/golden-images/scatterplot-lnglat.png'
   },
   {
     name: 'scatterplot-lnglat-64',
@@ -418,7 +467,7 @@ export const TEST_CASES = [
         coordinateSystem: COORDINATE_SYSTEM.LNGLAT_DEPRECATED,
         fp64: true,
         getPosition: d => d.COORDINATES,
-        getColor: d => [255, 128, 0],
+        getFillColor: d => [255, 128, 0],
         getRadius: d => d.SPACES,
         opacity: 1,
         pickable: true,
@@ -427,7 +476,7 @@ export const TEST_CASES = [
         radiusMaxPixels: 30
       })
     ],
-    referenceImageUrl: './test/render/golden-images/scatterplot-lnglat.png'
+    goldenImage: './test/render/golden-images/scatterplot-lnglat.png'
   },
   {
     name: 'arc-lnglat',
@@ -435,14 +484,14 @@ export const TEST_CASES = [
       latitude: 37.751537058389985,
       longitude: -122.42694203247012,
       zoom: 11.5,
-      pitch: 0,
+      pitch: 20,
       bearing: 0
     },
     layers: [
       new ArcLayer({
         id: 'arc-lnglat',
         data: dataSamples.routes,
-        strokeWidth: 0.5,
+        strokeWidth: 2,
         getSourcePosition: d => d.START,
         getTargetPosition: d => d.END,
         getSourceColor: d => [64, 255, 0],
@@ -450,8 +499,10 @@ export const TEST_CASES = [
         pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/arc-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/arc-lnglat.png',
+    imageDiffOptions: !IS_HEADLESS && {
+      threshold: 0.985
+    }
   },
   {
     name: 'arc-lnglat-64',
@@ -459,14 +510,14 @@ export const TEST_CASES = [
       latitude: 37.751537058389985,
       longitude: -122.42694203247012,
       zoom: 11.5,
-      pitch: 0,
+      pitch: 20,
       bearing: 0
     },
     layers: [
       new ArcLayer({
         id: 'arc-lnglat-64',
         data: dataSamples.routes,
-        strokeWidth: 0.5,
+        strokeWidth: 2,
         coordinateSystem: COORDINATE_SYSTEM.LNGLAT_DEPRECATED,
         fp64: true,
         getSourcePosition: d => d.START,
@@ -476,8 +527,10 @@ export const TEST_CASES = [
         pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/arc-lnglat-64.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/arc-lnglat-64.png',
+    imageDiffOptions: !IS_HEADLESS && {
+      threshold: 0.985
+    }
   },
   {
     name: 'line-lnglat',
@@ -492,15 +545,15 @@ export const TEST_CASES = [
       new LineLayer({
         id: 'line-lnglat',
         data: dataSamples.routes,
-        strokeWidth: 0.5,
+        getWidth: 0,
+        widthMinPixels: 2,
         getSourcePosition: d => d.START,
         getTargetPosition: d => d.END,
         getColor: d => (d.SERVICE === 'WEEKDAY' ? [255, 64, 0] : [255, 200, 0]),
         pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/line-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/line-lnglat.png'
   },
   {
     name: 'line-lnglat-64',
@@ -515,7 +568,8 @@ export const TEST_CASES = [
       new LineLayer({
         id: 'line-lnglat-64',
         data: dataSamples.routes,
-        strokeWidth: 0.5,
+        getWidth: 0,
+        widthMinPixels: 2,
         coordinateSystem: COORDINATE_SYSTEM.LNGLAT_DEPRECATED,
         fp64: true,
         getSourcePosition: d => d.START,
@@ -524,8 +578,7 @@ export const TEST_CASES = [
         pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/line-lnglat-64.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/line-lnglat-64.png'
   },
   {
     name: 'icon-lnglat',
@@ -553,8 +606,46 @@ export const TEST_CASES = [
         pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/icon-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    onAfterRender: ({layers, done}) => {
+      if (layers[0].state.iconManager.getTexture()) {
+        done();
+      }
+    },
+    goldenImage: './test/render/golden-images/icon-lnglat.png'
+  },
+  {
+    name: 'icon-lnglat-facing-up',
+    viewState: {
+      latitude: 37.751537058389985,
+      longitude: -122.42694203247012,
+      zoom: 11.5,
+      pitch: 60,
+      bearing: 0
+    },
+    // rendering times
+    renderingTimes: 2,
+    layers: [
+      new IconLayer({
+        id: 'icon-lnglat',
+        data: dataSamples.points,
+        iconAtlas: ICON_ATLAS,
+        billboard: false,
+        iconMapping: dataSamples.iconAtlas,
+        sizeScale: 12,
+        getPosition: d => d.COORDINATES,
+        getColor: d => [64, 64, 72],
+        getIcon: d => (d.PLACEMENT === 'SW' ? 'marker' : 'marker-warning'),
+        getSize: d => (d.RACKS > 2 ? 2 : 1),
+        opacity: 0.8,
+        pickable: true
+      })
+    ],
+    onAfterRender: ({layers, done}) => {
+      if (layers[0].state.iconManager.getTexture()) {
+        done();
+      }
+    },
+    goldenImage: './test/render/golden-images/icon-lnglat-facing-up.png'
   },
   {
     name: 'icon-lnglat-64',
@@ -584,8 +675,78 @@ export const TEST_CASES = [
         pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/icon-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/icon-lnglat.png'
+  },
+  {
+    name: 'icon-lnglat-auto',
+    viewState: {
+      latitude: 37.751537058389985,
+      longitude: -122.42694203247012,
+      zoom: 11.5,
+      pitch: 0,
+      bearing: 0
+    },
+    // rendering times
+    renderingTimes: 2,
+    layers: [
+      new IconLayer({
+        id: 'icon-lnglat-auto',
+        data: dataSamples.points,
+        sizeScale: 12,
+        coordinateSystem: COORDINATE_SYSTEM.LNGLAT_DEPRECATED,
+        fp64: true,
+        getPosition: d => d.COORDINATES,
+        getColor: d => [64, 64, 72],
+        getIcon: d => {
+          if (d.PLACEMENT === 'SW') {
+            return Object.assign({}, dataSamples.iconAtlas.marker, {
+              url: './test/render/icon-marker.png'
+            });
+          }
+          return Object.assign({}, dataSamples.iconAtlas['marker-warning'], {
+            url: './test/render/icon-warning.png'
+          });
+        },
+        getSize: d => (d.RACKS > 2 ? 2 : 1),
+        opacity: 0.8,
+        pickable: true
+      })
+    ],
+    goldenImage: './test/render/golden-images/icon-lnglat.png'
+  },
+  {
+    name: 'icon-meters',
+    viewState: {
+      latitude: 37.751537058389985,
+      longitude: -122.42694203247012,
+      zoom: 11.5,
+      pitch: 0,
+      bearing: 0
+    },
+    // rendering times
+    renderingTimes: 2,
+    layers: [
+      new IconLayer({
+        id: 'icon-meters',
+        data: dataSamples.points,
+        iconAtlas: ICON_ATLAS,
+        iconMapping: dataSamples.iconAtlas,
+        sizeScale: 256,
+        sizeUnits: 'meters',
+        getPosition: d => d.COORDINATES,
+        getColor: d => [64, 64, 72],
+        getIcon: d => (d.PLACEMENT === 'SW' ? 'marker' : 'marker-warning'),
+        getSize: d => (d.RACKS > 2 ? 2 : 1),
+        opacity: 0.8,
+        pickable: true
+      })
+    ],
+    onAfterRender: ({layers, done}) => {
+      if (layers[0].state.iconManager.getTexture()) {
+        done();
+      }
+    },
+    goldenImage: './test/render/golden-images/icon-lnglat.png'
   },
   {
     name: 'geojson-lnglat',
@@ -615,12 +776,10 @@ export const TEST_CASES = [
         getElevation: f => 500,
         lineWidthScale: 10,
         lineWidthMinPixels: 1,
-        pickable: true,
-        lightSettings: LIGHT_SETTINGS
+        pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/geojson-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/geojson-lnglat.png'
   },
   {
     name: 'geojson-extruded-lnglat',
@@ -652,12 +811,10 @@ export const TEST_CASES = [
         getElevation: f => 500,
         lineWidthScale: 10,
         lineWidthMinPixels: 1,
-        pickable: true,
-        lightSettings: LIGHT_SETTINGS
+        pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/geojson-extruded-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/geojson-extruded-lnglat.png'
   },
   {
     name: 'gridcell-lnglat',
@@ -676,13 +833,11 @@ export const TEST_CASES = [
         extruded: true,
         pickable: true,
         opacity: 1,
-        getColor: g => [245, 166, g.value * 255, 255],
-        getElevation: h => h.value * 5000,
-        lightSettings: LIGHT_SETTINGS
+        getFillColor: g => [245, 166, g.value * 255, 255],
+        getElevation: h => h.value * 5000
       })
     ],
-    referenceImageUrl: './test/render/golden-images/gridcell-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/gridcell-lnglat.png'
   },
   {
     name: 'gridcell-lnglat-64',
@@ -703,61 +858,75 @@ export const TEST_CASES = [
         fp64: true,
         pickable: true,
         opacity: 1,
-        getColor: g => [245, 166, g.value * 255, 255],
-        getElevation: h => h.value * 5000,
-        lightSettings: LIGHT_SETTINGS
+        getFillColor: g => [245, 166, g.value * 255, 255],
+        getElevation: h => h.value * 5000
       })
     ],
-    referenceImageUrl: './test/render/golden-images/gridcell-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/gridcell-lnglat.png'
   },
   {
     name: 'grid-lnglat',
-    viewState: {
-      latitude: 37.751537058389985,
-      longitude: -122.42694203247012,
-      zoom: 11.5,
-      pitch: 0,
-      bearing: 0
-    },
+    viewState: GRID_LAYER_INFO.viewState,
     layers: [
-      new GridLayer({
-        id: 'grid-lnglat',
-        data: dataSamples.points,
-        cellSize: 200,
-        opacity: 1,
-        extruded: true,
-        pickable: true,
-        getPosition: d => d.COORDINATES,
-        getColorValue,
-        getElevationValue,
-        lightSettings: LIGHT_SETTINGS
-      })
+      new CPUGridLayer(
+        Object.assign({}, GRID_LAYER_INFO.props, {
+          id: 'grid-lnglat',
+          getColorValue,
+          getElevationValue
+        })
+      )
     ],
-    referenceImageUrl: './test/render/golden-images/grid-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: GRID_LAYER_INFO.goldenImage
   },
   {
-    name: 'screengrid-lnglat',
-    viewState: {
-      latitude: 37.751537058389985,
-      longitude: -122.42694203247012,
-      zoom: 11.5,
-      pitch: 0,
-      bearing: 0
-    },
+    name: 'grid-lnglat-2',
+    viewState: GRID_LAYER_INFO.viewState,
     layers: [
-      new ScreenGridLayer({
-        id: 'screengrid-lnglat',
-        data: dataSamples.points,
-        getPosition: d => d.COORDINATES,
-        cellSizePixels: 40,
-        minColor: [0, 0, 80, 0],
-        maxColor: [100, 255, 0, 128],
-        pickable: false
-      })
+      new CPUGridLayer(
+        Object.assign({}, GRID_LAYER_INFO.props, {
+          id: 'grid-lnglat',
+          getColorWeight,
+          colorAggregation,
+          getElevationWeight,
+          elevationAggregation
+        })
+      )
     ],
-    referenceImageUrl: './test/render/golden-images/screengrid-lnglat.png'
+    goldenImage: GRID_LAYER_INFO.goldenImage
+  },
+  {
+    name: 'new-grid-lnglat-cpu',
+    viewState: GRID_LAYER_INFO.viewState,
+    layers: [
+      new GridLayer(
+        Object.assign({}, GRID_LAYER_INFO.props, {
+          id: 'new-grid-lnglat-cpu',
+          getColorWeight: x => x.SPACES,
+          colorAggregation: 'MEAN',
+          getElevationWeight: x => x.SPACES,
+          elevationAggregation: 'MAX',
+          gpuAggregation: false
+        })
+      )
+    ],
+    goldenImage: GRID_LAYER_INFO.goldenImage
+  },
+  {
+    name: 'new-grid-lnglat-gpu',
+    viewState: GRID_LAYER_INFO.viewState,
+    layers: [
+      new GridLayer(
+        Object.assign({}, GRID_LAYER_INFO.props, {
+          id: 'new-grid-lnglat-gpu',
+          getColorWeight: x => x.SPACES,
+          colorAggregation: 'MEAN',
+          getElevationWeight: x => x.SPACES,
+          elevationAggregation: 'MAX',
+          gpuAggregation: true
+        })
+      )
+    ],
+    goldenImage: GRID_LAYER_INFO.goldenImage
   },
   {
     name: 'screengrid-lnglat-cpu-aggregation',
@@ -774,13 +943,11 @@ export const TEST_CASES = [
         data: dataSamples.points,
         getPosition: d => d.COORDINATES,
         cellSizePixels: 40,
-        minColor: [0, 0, 80, 0],
-        maxColor: [100, 255, 0, 128],
         pickable: false,
         gpuAggregation: false
       })
     ],
-    referenceImageUrl: './test/render/golden-images/screengrid-lnglat.png'
+    goldenImage: './test/render/golden-images/screengrid-lnglat-colorRange.png'
   },
   {
     name: 'screengrid-lnglat-colorRange',
@@ -800,10 +967,37 @@ export const TEST_CASES = [
         pickable: false
       })
     ],
-    referenceImageUrl: './test/render/golden-images/screengrid-lnglat-colorRange.png'
+    goldenImage: './test/render/golden-images/screengrid-lnglat-colorRange.png'
   },
   {
-    name: 'hexagoncell-lnglat',
+    name: 'column-lnglat',
+    viewState: {
+      latitude: 37.751537058389985,
+      longitude: -122.42694203247012,
+      zoom: 11.5,
+      pitch: 30,
+      bearing: 0,
+      orthographic: true
+    },
+    layers: [
+      new ColumnLayer({
+        id: 'column-lnglat',
+        data: dataSamples.hexagons,
+        radius: 250,
+        angle: Math.PI / 2,
+        coverage: 1,
+        extruded: true,
+        pickable: true,
+        opacity: 1,
+        getPosition: h => h.centroid,
+        getFillColor: h => [48, 128, h.value * 255, 255],
+        getElevation: h => h.value * 5000
+      })
+    ],
+    goldenImage: './test/render/golden-images/column-lnglat.png'
+  },
+  {
+    name: 'column-lnglat-stroke',
     viewState: {
       latitude: 37.751537058389985,
       longitude: -122.42694203247012,
@@ -813,76 +1007,54 @@ export const TEST_CASES = [
       orthographic: true
     },
     layers: [
-      new HexagonCellLayer({
-        id: 'hexagoncell-lnglat',
+      new ColumnLayer({
+        id: 'column-lnglat',
         data: dataSamples.hexagons,
-        hexagonVertices: dataSamples.hexagons[0].vertices,
+        radius: 250,
+        angle: Math.PI / 2,
         coverage: 1,
-        extruded: true,
+        extruded: false,
+        stroked: true,
         pickable: true,
         opacity: 1,
-        getColor: h => [48, 128, h.value * 255, 255],
-        getElevation: h => h.value * 5000,
-        lightSettings: LIGHT_SETTINGS
+        lineWidthUnits: 'pixels',
+        getPosition: h => h.centroid,
+        getFillColor: h => [48, 128, h.value * 255, 255],
+        getLineColor: [255, 255, 255],
+        getLineWidth: 4
       })
     ],
-    referenceImageUrl: './test/render/golden-images/hexagoncell-lnglat.png',
-    ignoreGPUs: [`Intel`]
-  },
-  {
-    name: 'hexagoncell-lnglat-64',
-    viewState: {
-      latitude: 37.751537058389985,
-      longitude: -122.42694203247012,
-      zoom: 11.5,
-      pitch: 0,
-      bearing: 0
-    },
-    layers: [
-      new HexagonCellLayer({
-        id: 'hexagoncell-lnglat-64',
-        data: dataSamples.hexagons,
-        coordinateSystem: COORDINATE_SYSTEM.LNGLAT_DEPRECATED,
-        fp64: true,
-        hexagonVertices: dataSamples.hexagons[0].vertices,
-        coverage: 1,
-        extruded: true,
-        pickable: true,
-        opacity: 1,
-        getColor: h => [48, 128, h.value * 255, 255],
-        getElevation: h => h.value * 5000,
-        lightSettings: LIGHT_SETTINGS
-      })
-    ],
-    referenceImageUrl: './test/render/golden-images/hexagoncell-lnglat-64.png'
+    goldenImage: './test/render/golden-images/column-lnglat-stroke.png'
   },
   {
     name: 'hexagon-lnglat',
-    viewState: {
-      latitude: 37.751537058389985,
-      longitude: -122.42694203247012,
-      zoom: 11.5,
-      pitch: 0,
-      bearing: 0
-    },
+    viewState: HEXAGON_LAYER_INFO.viewState,
     layers: [
-      new HexagonLayer({
-        id: 'hexagon-lnglat',
-        data: dataSamples.points,
-        extruded: true,
-        pickable: true,
-        radius: 1000,
-        opacity: 1,
-        elevationScale: 1,
-        elevationRange: [0, 3000],
-        coverage: 1,
-        getPosition: d => d.COORDINATES,
-        getColorValue,
-        getElevationValue,
-        lightSettings: LIGHT_SETTINGS
-      })
+      new HexagonLayer(
+        Object.assign({}, HEXAGON_LAYER_INFO.props, {
+          id: 'hexagon-lnglat',
+          getColorValue,
+          getElevationValue
+        })
+      )
     ],
-    referenceImageUrl: './test/render/golden-images/hexagon-lnglat.png'
+    goldenImage: './test/render/golden-images/hexagon-lnglat.png'
+  },
+  {
+    name: 'hexagon-lnglat-2',
+    viewState: HEXAGON_LAYER_INFO.viewState,
+    layers: [
+      new HexagonLayer(
+        Object.assign({}, HEXAGON_LAYER_INFO.props, {
+          id: 'hexagon-lnglat',
+          getColorWeight,
+          colorAggregation,
+          getElevationWeight,
+          elevationAggregation
+        })
+      )
+    ],
+    goldenImage: './test/render/golden-images/hexagon-lnglat.png'
   },
   {
     name: 'pointcloud-lnglat',
@@ -903,13 +1075,11 @@ export const TEST_CASES = [
         getNormal: d => d.normal,
         getColor: d => d.color,
         opacity: 1,
-        radiusPixels: 2,
-        pickable: true,
-        lightSettings: LIGHT_SETTINGS
+        pointSize: 2,
+        pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/pointcloud-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/pointcloud-lnglat.png'
   },
   {
     name: 'pointcloud-lnglat-64',
@@ -935,13 +1105,11 @@ export const TEST_CASES = [
         getNormal: d => d.normal,
         getColor: d => d.color,
         opacity: 1,
-        radiusPixels: 2,
-        pickable: true,
-        lightSettings: LIGHT_SETTINGS
+        pointSize: 2,
+        pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/pointcloud-lnglat-64.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/pointcloud-lnglat-64.png'
   },
   {
     name: 'pointcloud-meter',
@@ -962,13 +1130,11 @@ export const TEST_CASES = [
         getNormal: d => d.normal,
         getColor: d => d.color,
         opacity: 1,
-        radiusPixels: 2,
-        pickable: true,
-        lightSettings: LIGHT_SETTINGS
+        pointSize: 2,
+        pickable: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/pointcloud-meter.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/pointcloud-meter.png'
   },
   {
     name: 'path-meter',
@@ -999,147 +1165,8 @@ export const TEST_CASES = [
         coordinateOrigin: dataSamples.positionOrigin
       })
     ],
-    referenceImageUrl: './test/render/golden-images/path-meter.png'
+    goldenImage: './test/render/golden-images/path-meter.png'
   },
-  {
-    name: 'mesh-lnglat',
-    viewState: {
-      latitude: 37.751537058389985,
-      longitude: -122.42694203247012,
-      zoom: 12,
-      pitch: 0,
-      bearing: 0
-    },
-    layers: [
-      new MeshLayer({
-        id: 'mesh-lnglat',
-        data: arrowDataLngLat,
-        mesh: new Arrow2DGeometry(),
-        sizeScale: 10000
-      })
-    ],
-    referenceImageUrl: './test/render/golden-images/mesh-lnglat.png'
-  },
-  {
-    name: 'mesh-lnglat-64',
-    viewState: {
-      latitude: 37.751537058389985,
-      longitude: -122.42694203247012,
-      zoom: 12,
-      pitch: 0,
-      bearing: 0
-    },
-    layers: [
-      new MeshLayer({
-        id: 'mesh-lnglat-64',
-        data: arrowDataLngLat,
-        coordinateSystem: COORDINATE_SYSTEM.LNGLAT_DEPRECATED,
-        fp64: true,
-        mesh: new Arrow2DGeometry(),
-        sizeScale: 10000
-      })
-    ],
-    referenceImageUrl: './test/render/golden-images/mesh-lnglat.png'
-  },
-  {
-    name: 'path-outline',
-    viewState: {
-      latitude: 37.751537058389985,
-      longitude: -122.42694203247012,
-      zoom: 11.5,
-      pitch: 0,
-      bearing: 0
-    },
-    layers: [
-      new PathOutlineLayer({
-        id: 'path-outline',
-        data: dataSamples.routes,
-        opacity: 0.6,
-        getPath: f => [f.START, f.END],
-        getColor: f => [128, 0, 0],
-        getZLevel: f => 125,
-        getWidth: f => 10,
-        widthMinPixels: 1,
-        pickable: true,
-        strokeWidth: 5,
-        widthScale: 10,
-        autoHighlight: true,
-        highlightColor: [255, 255, 255, 255],
-        parameters: {
-          blendEquation: GL.MAX
-        }
-      })
-    ],
-    referenceImageUrl: './test/render/golden-images/path-outline.png',
-    ignoreGPUs: [`Intel`]
-  },
-  {
-    name: 'path-outline-64',
-    viewState: {
-      latitude: 37.751537058389985,
-      longitude: -122.42694203247012,
-      zoom: 11.5,
-      pitch: 0,
-      bearing: 0
-    },
-    layers: [
-      new PathOutlineLayer({
-        id: 'path-outline-64',
-        data: dataSamples.routes,
-        coordinateSystem: COORDINATE_SYSTEM.LNGLAT_DEPRECATED,
-        fp64: true,
-        opacity: 0.6,
-        getPath: f => [f.START, f.END],
-        getColor: f => [128, 0, 0],
-        getZLevel: f => 125,
-        getWidth: f => 10,
-        widthMinPixels: 1,
-        pickable: true,
-        strokeWidth: 5,
-        widthScale: 10,
-        autoHighlight: true,
-        highlightColor: [255, 255, 255, 255],
-        parameters: {
-          blendEquation: GL.MAX
-        }
-      })
-    ],
-    referenceImageUrl: './test/render/golden-images/path-outline-64.png',
-    ignoreGPUs: [`Intel`]
-  },
-  // Chrome 65 can't render this case correctly
-  /* {
-    name: 'path-marker',
-    viewState: {
-      latitude: 37.751537058389985,
-      longitude: -122.42694203247012,
-      zoom: 11.5,
-      pitch: 0,
-      bearing: 0
-    },
-    layers: [
-      new PathMarkerLayer({
-        id: 'path-marker',
-        data: dataSamples.routes,
-        opacity: 0.6,
-        getPath: f => [f.START, f.END],
-        getColor: f => [230, 230, 230],
-        getZLevel: f => 125,
-        getWidth: f => 10,
-        widthMinPixels: 1,
-        pickable: true,
-        strokeWidth: 5,
-        widthScale: 10,
-        autoHighlight: true,
-        highlightColor: [255, 255, 255, 255],
-        parameters: {
-          blendEquation: GL.MAX
-        },
-        sizeScale: 200
-      })
-    ],
-    referenceImageUrl: './test/render/golden-images/path-maker.png'
-  }, */
   {
     name: 'text-layer',
     viewState: {
@@ -1153,6 +1180,7 @@ export const TEST_CASES = [
       new TextLayer({
         id: 'text-layer',
         data: dataSamples.points.slice(0, 50),
+        fontFamily: 'Arial',
         getText: x => `${x.PLACEMENT}-${x.YR_INSTALLED}`,
         getPosition: x => x.COORDINATES,
         getColor: x => [153, 0, 0],
@@ -1164,7 +1192,7 @@ export const TEST_CASES = [
         getPixelOffset: x => [10, 0]
       })
     ],
-    referenceImageUrl: './test/render/golden-images/text-layer.png'
+    goldenImage: './test/render/golden-images/text-layer.png'
   },
   {
     name: 'text-layer-64',
@@ -1179,6 +1207,7 @@ export const TEST_CASES = [
       new TextLayer({
         id: 'text-layer-64',
         data: dataSamples.points.slice(0, 50),
+        fontFamily: 'Arial',
         coordinateSystem: COORDINATE_SYSTEM.LNGLAT_DEPRECATED,
         fp64: true,
         getText: x => `${x.PLACEMENT}-${x.YR_INSTALLED}`,
@@ -1192,57 +1221,61 @@ export const TEST_CASES = [
         getPixelOffset: x => [10, 0]
       })
     ],
-    referenceImageUrl: './test/render/golden-images/text-layer.png'
+    goldenImage: './test/render/golden-images/text-layer.png'
+  },
+  {
+    name: 'text-layer-meters',
+    viewState: {
+      latitude: 37.751537058389985,
+      longitude: -122.42694203247012,
+      zoom: 11.5,
+      pitch: 0,
+      bearing: 0
+    },
+    layers: [
+      new TextLayer({
+        id: 'text-layer',
+        data: dataSamples.points.slice(0, 50),
+        fontFamily: 'Arial',
+        getText: x => `${x.PLACEMENT}-${x.YR_INSTALLED}`,
+        getPosition: x => x.COORDINATES,
+        getColor: x => [153, 0, 0],
+        getSize: x => 16,
+        getAngle: x => 0,
+        sizeScale: 21,
+        sizeUnits: 'meters',
+        getTextAnchor: x => 'start',
+        getAlignmentBaseline: x => 'center',
+        getPixelOffset: x => [10, 0]
+      })
+    ],
+    goldenImage: './test/render/golden-images/text-layer.png'
   },
   {
     name: 'gpu-grid-lnglat',
-    viewState: {
-      latitude: 37.751537058389985,
-      longitude: -122.42694203247012,
-      zoom: 11.5,
-      pitch: 0,
-      bearing: 0
-    },
+    viewState: GRID_LAYER_INFO.viewState,
     layers: [
-      new GPUGridLayer({
-        id: 'gpu-grid-lnglat',
-        data: dataSamples.points,
-        cellSize: 200,
-        opacity: 1,
-        extruded: true,
-        pickable: true,
-        getPosition: d => d.COORDINATES,
-        lightSettings: LIGHT_SETTINGS,
-        gpuAggregation: true
-      })
+      new GPUGridLayer(
+        Object.assign({}, GRID_LAYER_INFO.props, {
+          id: 'gpu-grid-lnglat',
+          gpuAggregation: true
+        })
+      )
     ],
-    referenceImageUrl: './test/render/golden-images/gpu-grid-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/gpu-grid-lnglat.png'
   },
   {
     name: 'gpu-grid-lnglat-cpu-aggregation',
-    viewState: {
-      latitude: 37.751537058389985,
-      longitude: -122.42694203247012,
-      zoom: 11.5,
-      pitch: 0,
-      bearing: 0
-    },
+    viewState: GRID_LAYER_INFO.viewState,
     layers: [
-      new GPUGridLayer({
-        id: 'gpu-grid-lnglat-cpu-aggregation',
-        data: dataSamples.points,
-        cellSize: 200,
-        opacity: 1,
-        extruded: true,
-        pickable: true,
-        getPosition: d => d.COORDINATES,
-        lightSettings: LIGHT_SETTINGS,
-        gpuAggregation: false
-      })
+      new GPUGridLayer(
+        Object.assign({}, GRID_LAYER_INFO.props, {
+          id: 'gpu-grid-lnglat-cpu-aggregation',
+          gpuAggregation: false
+        })
+      )
     ],
-    referenceImageUrl: './test/render/golden-images/gpu-grid-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/gpu-grid-lnglat.png'
   },
   {
     name: 'contour-lnglat-cpu-aggregation',
@@ -1260,7 +1293,6 @@ export const TEST_CASES = [
         cellSize: 200,
         opacity: 1,
         getPosition: d => d.COORDINATES,
-        lightSettings: LIGHT_SETTINGS,
         contours: [
           {threshold: 1, color: [255, 0, 0], strokeWidth: 6},
           {threshold: 5, color: [0, 255, 0], strokeWidth: 3},
@@ -1269,8 +1301,7 @@ export const TEST_CASES = [
         gpuAggregation: false
       })
     ],
-    referenceImageUrl: './test/render/golden-images/contour-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/contour-lnglat.png'
   },
   {
     name: 'contour-lnglat',
@@ -1288,7 +1319,6 @@ export const TEST_CASES = [
         cellSize: 200,
         opacity: 1,
         getPosition: d => d.COORDINATES,
-        lightSettings: LIGHT_SETTINGS,
         contours: [
           {threshold: 1, color: [255, 0, 0], strokeWidth: 6},
           {threshold: 5, color: [0, 255, 0], strokeWidth: 3},
@@ -1297,8 +1327,7 @@ export const TEST_CASES = [
         gpuAggregation: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/contour-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/contour-lnglat.png'
   },
   {
     name: 'contour-isobands-lnglat',
@@ -1316,7 +1345,6 @@ export const TEST_CASES = [
         cellSize: 200,
         opacity: 1,
         getPosition: d => d.COORDINATES,
-        lightSettings: LIGHT_SETTINGS,
         contours: [
           {threshold: [1, 5], color: [255, 0, 0], strokeWidth: 6},
           {threshold: [5, 15], color: [0, 255, 0], strokeWidth: 3},
@@ -1325,7 +1353,270 @@ export const TEST_CASES = [
         gpuAggregation: true
       })
     ],
-    referenceImageUrl: './test/render/golden-images/contour-isobands-lnglat.png',
-    ignoreGPUs: [`Intel`]
+    goldenImage: './test/render/golden-images/contour-isobands-lnglat.png'
+  },
+  {
+    name: 'h3-hexagon-layer',
+    viewState: {
+      latitude: 37.78,
+      longitude: -122.45,
+      zoom: 11,
+      pitch: 30,
+      bearing: 0
+    },
+    layers: [
+      new H3HexagonLayer({
+        data: h3.kRing('882830829bfffff', 4),
+        getHexagon: d => d,
+        getFillColor: (d, {index}) => [255, index * 5, 0],
+        getElevation: (d, {index}) => index * 100
+      })
+    ],
+    goldenImage: './test/render/golden-images/h3-hexagon.png'
+  },
+  {
+    name: 'h3-hexagon-layer-high-precision',
+    viewState: {
+      latitude: 50.103,
+      longitude: -143.478,
+      zoom: 13,
+      pitch: 0,
+      bearing: 0
+    },
+    layers: [
+      new H3HexagonLayer({
+        data: h3.kRing('891c0000003ffff', 4),
+        getHexagon: d => d,
+        getFillColor: (d, {index}) => [255, index * 5, 0],
+        getElevation: (d, {index}) => index * 10
+      })
+    ],
+    goldenImage: './test/render/golden-images/h3-hexagon-high-precision.png'
+  },
+  {
+    name: 'h3-hexagon-layer-flat',
+    viewState: {
+      latitude: 37.78,
+      longitude: -122.45,
+      zoom: 12,
+      pitch: 0,
+      bearing: 0
+    },
+    layers: [
+      new H3HexagonLayer({
+        data: h3.kRing('882830829bfffff', 4),
+        getHexagon: d => d,
+        extruded: false,
+        stroked: true,
+        getFillColor: (d, {index}) => [255, index * 5, 0],
+        getLineColor: [255, 255, 255],
+        lineWidthMinPixels: 2
+      })
+    ],
+    goldenImage: './test/render/golden-images/h3-hexagon-flat.png'
+  },
+  {
+    name: 'h3-hexagon-layer-flat-high-precision',
+    viewState: {
+      latitude: 37.78,
+      longitude: -122.45,
+      zoom: 12,
+      pitch: 0,
+      bearing: 0
+    },
+    layers: [
+      new H3HexagonLayer({
+        data: h3.kRing('882830829bfffff', 4),
+        getHexagon: d => d,
+        extruded: false,
+        stroked: true,
+        highPrecision: true,
+        getFillColor: (d, {index}) => [255, index * 5, 0],
+        getLineColor: [255, 255, 255],
+        lineWidthMinPixels: 2
+      })
+    ],
+    goldenImage: './test/render/golden-images/h3-hexagon-flat.png'
+  },
+  {
+    name: 'h3-hexagon-layer-low-zoom',
+    viewState: {
+      latitude: 0,
+      longitude: 0,
+      zoom: 0,
+      pitch: 0,
+      bearing: 0
+    },
+    layers: [
+      new H3HexagonLayer({
+        data: h3
+          .polyfill([[-90, -180], [90, -180], [90, 0], [-90, 0]], 0)
+          .concat(h3.polyfill([[-90, 180], [90, 180], [90, 0], [-90, 0]], 0)),
+        getHexagon: d => d,
+        extruded: false,
+        filled: false,
+        stroked: true,
+        getLineColor: [0, 0, 0],
+        lineWidthMinPixels: 2
+      })
+    ],
+    goldenImage: './test/render/golden-images/h3-hexagon-low-zoom.png'
+  },
+  {
+    name: 'h3-cluster-layer',
+    viewState: {
+      latitude: 37.78,
+      longitude: -122.45,
+      zoom: 11,
+      pitch: 0,
+      bearing: 0
+    },
+    layers: [
+      new H3ClusterLayer({
+        data: ['882830829bfffff'],
+        getHexagons: d => h3.kRing(d, 6),
+        getLineWidth: 100,
+        stroked: true,
+        filled: false
+      })
+    ],
+    goldenImage: './test/render/golden-images/h3-cluster.png'
+  },
+  {
+    name: 'bitmap-layer',
+    viewState: {
+      latitude: 37.75,
+      longitude: -122.4,
+      zoom: 11.5,
+      pitch: 0,
+      bearing: 0
+    },
+    layers: [
+      new BitmapLayer({
+        bounds: [-122.45, 37.7, -122.35, 37.8],
+        image: ICON_ATLAS
+      })
+    ],
+    goldenImage: './test/render/golden-images/bitmap.png'
+  },
+  {
+    name: 'trips-layer-2d',
+    viewState: {
+      latitude: 37.75,
+      longitude: -122.45,
+      zoom: 11.5,
+      pitch: 0,
+      bearing: 0
+    },
+    layers: [
+      new TripsLayer({
+        id: 'trips-2d',
+        data: dataSamples.trips,
+        getPath: d => {
+          const firstPoint = d[0].begin_shape.concat(d[0].begin_time);
+          const points = d.map(leg => leg.end_shape.concat(leg.end_time));
+          return [firstPoint].concat(points);
+        },
+        getColor: [253, 128, 93],
+        widthMinPixels: 4,
+        rounded: true,
+        trailLength: 500,
+        currentTime: 500
+      })
+    ],
+    goldenImage: './test/render/golden-images/trips.png'
+  },
+  {
+    name: 'trips-layer-3d',
+    viewState: {
+      latitude: 37.75,
+      longitude: -122.45,
+      zoom: 11.5,
+      pitch: 0,
+      bearing: 0
+    },
+    layers: [
+      new TripsLayer({
+        id: 'trips-3d',
+        data: dataSamples.trips,
+        getPath: d => [d[0].begin_shape].concat(d.map(leg => leg.end_shape)),
+        getTimestamps: d => [d[0].begin_time].concat(d.map(leg => leg.end_time)),
+        getColor: [253, 128, 93],
+        widthMinPixels: 4,
+        rounded: true,
+        trailLength: 500,
+        currentTime: 500
+      })
+    ],
+    goldenImage: './test/render/golden-images/trips.png'
+  },
+  {
+    name: 'post-process-effects',
+    effects: [effect1, effect2],
+    viewState: {
+      latitude: 37.751537058389985,
+      longitude: -122.42694203247012,
+      zoom: 11.5,
+      pitch: 0,
+      bearing: 0
+    },
+    layers: [
+      new ScatterplotLayer({
+        id: 'post-process-effects',
+        data: dataSamples.points,
+        getPosition: d => d.COORDINATES,
+        getFillColor: d => [255, 128, 0],
+        getRadius: d => d.SPACES,
+        opacity: 1,
+        pickable: true,
+        radiusScale: 30,
+        radiusMinPixels: 1,
+        radiusMaxPixels: 30
+      })
+    ],
+    goldenImage: './test/render/golden-images/post-process-effects.png'
+  },
+  {
+    name: 'S2Layer',
+    viewState: {
+      latitude: 37.75,
+      longitude: -122.45,
+      zoom: 11.5,
+      pitch: 0,
+      bearing: 0
+    },
+    layers: [
+      new S2Layer({
+        data: dataSamples.s2cells,
+        filled: true,
+        stroked: false,
+        getS2Token: f => f.token,
+        getFillColor: f => [f.value * 255, (1 - f.value) * 255, (1 - f.value) * 128],
+        pickable: true
+      })
+    ],
+    goldenImage: './test/render/golden-images/s2-layer.png'
+  },
+  {
+    name: 'S2Layer',
+    viewState: {
+      latitude: 40,
+      longitude: -100,
+      zoom: 1.5,
+      pitch: 0,
+      bearing: 0
+    },
+    layers: [
+      new S2Layer({
+        data: ['4b', '4d', '53', '55', '81', '87', '89', '8b'],
+        opacity: 0.6,
+        getS2Token: f => f,
+        filled: false,
+        stroked: true,
+        lineWidthMinPixels: 4,
+        pickable: true
+      })
+    ],
+    goldenImage: './test/render/golden-images/s2-layer-l2.png'
   }
 ];

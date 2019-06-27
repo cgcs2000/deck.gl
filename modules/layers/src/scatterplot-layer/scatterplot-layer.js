@@ -18,9 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import {Layer} from '@cgcs2000/deck.gl.core';
-import GL from 'luma.gl/constants';
-import {Model, Geometry, fp64} from 'luma.gl';
+import {Layer, createIterable} from '@cgcs2000/deck.gl.core';
+import GL from '@luma.gl/constants';
+import {Model, Geometry, fp64} from '@luma.gl/core';
 const {fp64LowPart} = fp64;
 
 import vs from './scatterplot-layer-vertex.glsl';
@@ -32,9 +32,12 @@ const defaultProps = {
   radiusScale: {type: 'number', min: 0, value: 1},
   radiusMinPixels: {type: 'number', min: 0, value: 0}, //  min point radius in pixels
   radiusMaxPixels: {type: 'number', min: 0, value: Number.MAX_SAFE_INTEGER}, // max point radius in pixels
+
+  lineWidthUnits: 'meters',
   lineWidthScale: {type: 'number', min: 0, value: 1},
   lineWidthMinPixels: {type: 'number', min: 0, value: 0},
   lineWidthMaxPixels: {type: 'number', min: 0, value: Number.MAX_SAFE_INTEGER},
+
   stroked: false,
   fp64: false,
   filled: true,
@@ -111,29 +114,36 @@ export default class ScatterplotLayer extends Layer {
   }
 
   draw({uniforms}) {
+    const {viewport} = this.context;
     const {
       radiusScale,
       radiusMinPixels,
       radiusMaxPixels,
       stroked,
       filled,
+      lineWidthUnits,
       lineWidthScale,
       lineWidthMinPixels,
       lineWidthMaxPixels
     } = this.props;
 
-    this.state.model.render(
-      Object.assign({}, uniforms, {
-        stroked: stroked ? 1 : 0,
-        filled,
-        radiusScale,
-        radiusMinPixels,
-        radiusMaxPixels,
-        lineWidthScale,
-        lineWidthMinPixels,
-        lineWidthMaxPixels
-      })
-    );
+    const widthMultiplier =
+      lineWidthUnits === 'pixels' ? viewport.distanceScales.metersPerPixel[2] : 1;
+
+    this.state.model
+      .setUniforms(
+        Object.assign({}, uniforms, {
+          stroked: stroked ? 1 : 0,
+          filled,
+          radiusScale,
+          radiusMinPixels,
+          radiusMaxPixels,
+          lineWidthScale: lineWidthScale * widthMultiplier,
+          lineWidthMinPixels,
+          lineWidthMaxPixels
+        })
+      )
+      .draw();
   }
 
   _getModel(gl) {
@@ -146,8 +156,9 @@ export default class ScatterplotLayer extends Layer {
         id: this.props.id,
         geometry: new Geometry({
           drawMode: GL.TRIANGLE_FAN,
+          vertexCount: 4,
           attributes: {
-            positions: new Float32Array(positions)
+            positions: {size: 3, value: new Float32Array(positions)}
           }
         }),
         isInstanced: true,
@@ -156,7 +167,7 @@ export default class ScatterplotLayer extends Layer {
     );
   }
 
-  calculateInstancePositions64xyLow(attribute) {
+  calculateInstancePositions64xyLow(attribute, {startRow, endRow}) {
     const isFP64 = this.use64bitPositions();
     attribute.constant = !isFP64;
 
@@ -166,10 +177,12 @@ export default class ScatterplotLayer extends Layer {
     }
 
     const {data, getPosition} = this.props;
-    const {value} = attribute;
-    let i = 0;
-    for (const point of data) {
-      const position = getPosition(point);
+    const {value, size} = attribute;
+    let i = startRow * size;
+    const {iterable, objectInfo} = createIterable(data, startRow, endRow);
+    for (const object of iterable) {
+      objectInfo.index++;
+      const position = getPosition(object, objectInfo);
       value[i++] = fp64LowPart(position[0]);
       value[i++] = fp64LowPart(position[1]);
     }

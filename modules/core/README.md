@@ -1,4 +1,4 @@
-# @deck.gl/core
+# @cgcs2000/deck.gl.core
 
 These are deck.gl's core library classes.
 

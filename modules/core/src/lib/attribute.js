@@ -1,18 +1,22 @@
 /* eslint-disable complexity */
+import GL from '@luma.gl/constants';
+import {Buffer} from '@luma.gl/core';
 import assert from '../utils/assert';
-import GL from 'luma.gl/constants';
-import {Buffer, _Attribute as Attribute} from 'luma.gl';
-
+import {createIterable} from '../utils/iterable-utils';
+import {fillArray} from '../utils/flatten';
+import * as range from '../utils/range';
 import log from '../utils/log';
+import BaseAttribute from './base-attribute';
 
 const DEFAULT_STATE = {
   isExternalBuffer: false,
   needsUpdate: true,
   needsRedraw: false,
+  updateRanges: range.FULL,
   allocedInstances: -1
 };
 
-export default class LayerAttribute extends Attribute {
+export default class Attribute extends BaseAttribute {
   constructor(gl, opts = {}) {
     super(gl, opts);
 
@@ -28,10 +32,38 @@ export default class LayerAttribute extends Attribute {
     let {defaultValue = [0, 0, 0, 0]} = opts;
     defaultValue = Array.isArray(defaultValue) ? defaultValue : [defaultValue];
 
+    this.shaderAttributes = {};
+    this.hasShaderAttributes = false;
+
+    if (opts.shaderAttributes) {
+      const shaderAttributes = opts.shaderAttributes;
+      for (const shaderAttributeName in shaderAttributes) {
+        const shaderAttribute = shaderAttributes[shaderAttributeName];
+
+        // Initialize the attribute descriptor, with WebGL and metadata fields
+        this.shaderAttributes[shaderAttributeName] = new Attribute(
+          this.gl,
+          Object.assign({}, shaderAttribute, {
+            id: shaderAttributeName,
+            // Luma fields
+            constant: shaderAttribute.constant || false,
+            isIndexed: shaderAttribute.isIndexed || shaderAttribute.elements,
+            size: (shaderAttribute.elements && 1) || shaderAttribute.size || this.size,
+            value: shaderAttribute.value || null,
+            divisor: shaderAttribute.instanced || shaderAttribute.divisor || this.divisor,
+            buffer: this.getBuffer(),
+            noAlloc: true
+          })
+        );
+
+        this.hasShaderAttributes = true;
+      }
+    }
+
     Object.assign(this.userData, DEFAULT_STATE, opts, {
       transition,
       noAlloc,
-      update,
+      update: update || (accessor && this._standardAccessor),
       accessor,
       defaultValue,
       bufferLayout
@@ -69,11 +101,22 @@ export default class LayerAttribute extends Attribute {
     const {accessor} = this.userData;
 
     // Backards compatibility: allow attribute name to be used as update trigger key
-    return [this.id].concat(accessor || []);
+    return [this.id].concat((typeof accessor !== 'function' && accessor) || []);
   }
 
   getAccessor() {
     return this.userData.accessor;
+  }
+
+  getShaderAttributes() {
+    const shaderAttributes = {};
+    if (this.hasShaderAttributes) {
+      Object.assign(shaderAttributes, this.shaderAttributes);
+    } else {
+      shaderAttributes[this.id] = this;
+    }
+
+    return shaderAttributes;
   }
 
   supportsTransition() {
@@ -100,11 +143,19 @@ export default class LayerAttribute extends Attribute {
     return null;
   }
 
-  // Checks that typed arrays for attributes are big enough
-  // sets alloc flag if not
-  // @return {Boolean} whether any updates are needed
-  setNeedsUpdate(reason = this.id) {
+  setNeedsUpdate(reason = this.id, dataRange) {
     this.userData.needsUpdate = this.userData.needsUpdate || reason;
+    if (dataRange) {
+      const {startRow = 0, endRow = Infinity} = dataRange;
+      this.userData.updateRanges = range.add(this.userData.updateRanges, [startRow, endRow]);
+    } else {
+      this.userData.updateRanges = range.FULL;
+    }
+  }
+
+  clearNeedsUpdate() {
+    this.userData.needsUpdate = false;
+    this.userData.updateRanges = range.EMPTY;
   }
 
   setNeedsRedraw(reason = this.id) {
@@ -127,10 +178,24 @@ export default class LayerAttribute extends Attribute {
       // Allocate at least one element to ensure a valid buffer
       const allocCount = Math.max(numInstances, 1);
       const ArrayType = glArrayFromType(this.type || GL.FLOAT);
+      const oldValue = this.value;
 
       this.constant = false;
       this.value = new ArrayType(this.size * allocCount);
-      state.needsUpdate = true;
+
+      if (this.buffer && this.buffer.byteLength < this.value.byteLength) {
+        this.buffer.reallocate(this.value.byteLength);
+      }
+
+      if (state.updateRanges !== range.FULL) {
+        this.value.set(oldValue);
+        // Upload the full existing attribute value to the GPU, so that updateBuffer
+        // can choose to only update a partial range.
+        // TODO - copy old buffer to new buffer on the GPU
+        this.buffer.subData(oldValue);
+      }
+
+      this.setNeedsUpdate(true, {startRow: instanceCount});
       state.allocedInstances = allocCount;
       return true;
     }
@@ -138,36 +203,61 @@ export default class LayerAttribute extends Attribute {
     return false;
   }
 
-  updateBuffer({numInstances, data, props, context}) {
+  updateBuffer({numInstances, bufferLayout, data, props, context}) {
     if (!this.needsUpdate()) {
       return false;
     }
 
     const state = this.userData;
 
-    const {update, accessor} = state;
+    const {update, updateRanges, noAlloc} = state;
 
     let updated = true;
     if (update) {
       // Custom updater - typically for non-instanced layers
-      update.call(context, this, {data, props, numInstances});
-      this.update({
-        value: this.value,
-        constant: this.constant
-      });
-      this._checkAttributeArray();
-    } else if (accessor) {
-      // Standard updater
-      this._updateBufferViaStandardAccessor(data, props);
+      for (const [startRow, endRow] of updateRanges) {
+        update.call(context, this, {data, startRow, endRow, props, numInstances, bufferLayout});
+      }
+      if (this.constant || !this.buffer || this.buffer.byteLength < this.value.byteLength) {
+        // call base clas `update` method to upload value to GPU
+        this.update({
+          value: this.value,
+          constant: this.constant
+        });
+      } else {
+        for (const [startRow, endRow] of updateRanges) {
+          const startOffset = Number.isFinite(startRow)
+            ? this._getVertexOffset(startRow, this.bufferLayout)
+            : 0;
+          const endOffset = Number.isFinite(endRow)
+            ? this._getVertexOffset(endRow, this.bufferLayout)
+            : noAlloc || !Number.isFinite(numInstances)
+              ? this.value.length
+              : numInstances * this.size;
+
+          // Only update the changed part of the attribute
+          this.buffer.subData({
+            data: this.value.subarray(startOffset, endOffset),
+            offset: startOffset * this.value.BYTES_PER_ELEMENT
+          });
+        }
+      }
       this._checkAttributeArray();
     } else {
       updated = false;
     }
 
-    state.needsUpdate = false;
+    this._updateShaderAttributes();
+
+    this.clearNeedsUpdate();
     state.needsRedraw = true;
 
     return updated;
+  }
+
+  update(props) {
+    super.update(props);
+    this._updateShaderAttributes();
   }
 
   // Use generic value
@@ -189,8 +279,9 @@ export default class LayerAttribute extends Attribute {
       this.update({constant: true, value});
     }
     state.needsRedraw = state.needsUpdate || hasChanged;
-    state.needsUpdate = false;
+    this.clearNeedsUpdate();
     state.isExternalBuffer = true;
+    this._updateShaderAttributes();
     return true;
   }
 
@@ -201,7 +292,7 @@ export default class LayerAttribute extends Attribute {
 
     if (buffer) {
       state.isExternalBuffer = true;
-      state.needsUpdate = false;
+      this.clearNeedsUpdate();
 
       if (buffer instanceof Buffer) {
         if (this.externalBuffer !== buffer) {
@@ -228,6 +319,7 @@ export default class LayerAttribute extends Attribute {
         this.value = buffer;
         state.needsRedraw = true;
       }
+      this._updateShaderAttributes();
       return true;
     }
 
@@ -236,6 +328,21 @@ export default class LayerAttribute extends Attribute {
   }
 
   // PRIVATE HELPER METHODS
+  _getVertexOffset(row, bufferLayout) {
+    if (bufferLayout) {
+      let offset = 0;
+      let index = 0;
+      for (const geometrySize of bufferLayout) {
+        if (index >= row) {
+          break;
+        }
+        offset += geometrySize * this.size;
+        index++;
+      }
+      return offset;
+    }
+    return row * this.size;
+  }
 
   /* check user supplied values and apply fallback */
   _normalizeValue(value, out = [], start = 0) {
@@ -270,22 +377,39 @@ export default class LayerAttribute extends Attribute {
     return true;
   }
 
-  _updateBufferViaStandardAccessor(data, props) {
-    const state = this.userData;
+  _standardAccessor(attribute, {data, startRow, endRow, props, numInstances, bufferLayout}) {
+    const state = attribute.userData;
 
     const {accessor} = state;
-    const {value, size} = this;
-    const accessorFunc = props[accessor];
+    const {value, size} = attribute;
+    const accessorFunc = typeof accessor === 'function' ? accessor : props[accessor];
 
     assert(typeof accessorFunc === 'function', `accessor "${accessor}" is not a function`);
 
-    let i = 0;
-    for (const object of data) {
-      const objectValue = accessorFunc(object);
-      this._normalizeValue(objectValue, value, i);
-      i += size;
+    let i = attribute._getVertexOffset(startRow, bufferLayout);
+    const {iterable, objectInfo} = createIterable(data, startRow, endRow);
+    for (const object of iterable) {
+      objectInfo.index++;
+
+      const objectValue = accessorFunc(object, objectInfo);
+
+      if (bufferLayout) {
+        attribute._normalizeValue(objectValue, objectInfo.target);
+        const numVertices = bufferLayout[objectInfo.index];
+        fillArray({
+          target: attribute.value,
+          source: objectInfo.target,
+          start: i,
+          count: numVertices
+        });
+        i += numVertices * size;
+      } else {
+        attribute._normalizeValue(objectValue, value, i);
+        i += size;
+      }
     }
-    this.update({value});
+    attribute.constant = false;
+    attribute.bufferLayout = bufferLayout;
   }
 
   // Validate deck.gl level fields
@@ -311,6 +435,18 @@ export default class LayerAttribute extends Attribute {
       if (!valid) {
         throw new Error(`Illegal attribute generated for ${this.id}`);
       }
+    }
+  }
+
+  _updateShaderAttributes() {
+    const shaderAttributes = this.shaderAttributes;
+    for (const shaderAttributeName in shaderAttributes) {
+      const shaderAttribute = shaderAttributes[shaderAttributeName];
+      shaderAttribute.update({
+        buffer: this.getBuffer(),
+        value: this.value,
+        constant: this.constant
+      });
     }
   }
 }

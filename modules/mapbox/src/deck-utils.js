@@ -1,5 +1,4 @@
-import {Deck} from '@cgcs2000/deck.gl.core';
-import {withParameters} from 'luma.gl';
+import {Deck, WebMercatorViewport} from '@cgcs2000/deck.gl.core';
 
 export function getDeckInstance({map, gl, deck}) {
   // Only create one deck instance per context
@@ -7,9 +6,18 @@ export function getDeckInstance({map, gl, deck}) {
     return map.__deck;
   }
 
+  const customRender = deck && deck.props._customRender;
+
   const deckProps = {
     useDevicePixels: true,
-    _customRender: () => map.triggerRepaint(),
+    _customRender: () => {
+      map.triggerRepaint();
+      if (customRender) {
+        // customRender may be subscribed by DeckGL React component to update child props
+        // make sure it is still called
+        customRender();
+      }
+    },
     // TODO: import these defaults from a single source of truth
     parameters: {
       depthMask: true,
@@ -31,10 +39,15 @@ export function getDeckInstance({map, gl, deck}) {
     Object.assign(deckProps, {
       gl,
       width: false,
-      height: false
+      height: false,
+      viewState: getViewState(map)
     });
     deck = new Deck(deckProps);
 
+    // If deck is externally provided (React use case), we use deck's viewState to
+    // drive the map.
+    // Otherwise (pure JS use case), we use the map's viewState to drive deck.
+    map.on('move', () => onMapMove(deck, map));
     map.on('remove', () => {
       deck.finalize();
       map.__deck = null;
@@ -42,8 +55,6 @@ export function getDeckInstance({map, gl, deck}) {
   }
   map.__deck = deck;
   map.on('render', () => afterRender(deck, map));
-
-  initEvents(map, deck);
 
   return deck;
 }
@@ -62,23 +73,57 @@ export function updateLayer(deck, layer) {
   updateLayers(deck);
 }
 
-export function drawLayer(deck, layer) {
-  // set layerFilter to only allow the current layer
-  deck.layerManager.layerFilter = params => shouldDrawLayer(layer.id, params.layer);
-  deck._drawLayers('mapbox-repaint');
+export function drawLayer(deck, map, layer) {
+  let {currentViewport} = deck.props.userData;
+  if (!currentViewport) {
+    // This is the first layer drawn in this render cycle.
+    // Generate viewport from the current map state.
+    currentViewport = getViewport(deck, map, true);
+    deck.props.userData.currentViewport = currentViewport;
+  }
+
+  deck._drawLayers('mapbox-repaint', {
+    viewports: [currentViewport],
+    // TODO - accept layerFilter in drawLayers' renderOptions
+    layers: getLayers(deck, deckLayer => shouldDrawLayer(layer.id, deckLayer)),
+    clearCanvas: false
+  });
 }
 
-export function getViewState(map, extraProps) {
+function getViewState(map) {
   const {lng, lat} = map.getCenter();
-  return Object.assign(
-    {
-      longitude: lng,
-      latitude: lat,
-      zoom: map.getZoom(),
-      bearing: map.getBearing(),
-      pitch: map.getPitch()
-    },
-    extraProps
+  return {
+    longitude: lng,
+    latitude: lat,
+    zoom: map.getZoom(),
+    bearing: map.getBearing(),
+    pitch: map.getPitch()
+  };
+}
+
+function getViewport(deck, map, useMapboxProjection = true) {
+  return new WebMercatorViewport(
+    Object.assign(
+      {
+        x: 0,
+        y: 0,
+        width: deck.width,
+        height: deck.height
+      },
+      getViewState(map),
+      // https://github.com/mapbox/mapbox-gl-js/issues/7573
+      useMapboxProjection
+        ? {
+            // match mapbox's projection matrix
+            nearZMultiplier: deck.height ? 1 / deck.height : 1,
+            farZMultiplier: 1
+          }
+        : {
+            // use deck.gl's projection matrix
+            nearZMultiplier: 0.1,
+            farZMultiplier: 10
+          }
+    )
   );
 }
 
@@ -86,27 +131,42 @@ function afterRender(deck, map) {
   const {mapboxLayers, isExternal} = deck.props.userData;
 
   if (isExternal) {
-    // Update viewState
-    const viewState = getViewState(map, {
-      nearZMultiplier: 0.1,
-      farZMultiplier: 10
-    });
-    deck.setProps({viewState});
-
     // Draw non-Mapbox layers
     const mapboxLayerIds = Array.from(mapboxLayers, layer => layer.id);
-    deck.layerManager.layerFilter = params => {
+    const layers = getLayers(deck, deckLayer => {
       for (const id of mapboxLayerIds) {
-        if (shouldDrawLayer(id, params.layer)) {
+        if (shouldDrawLayer(id, deckLayer)) {
           return false;
         }
       }
       return true;
-    };
-    deck._drawLayers('mapbox-repaint');
+    });
+    if (layers.length > 0) {
+      deck._drawLayers('mapbox-repaint', {
+        viewports: [getViewport(deck, map, false)],
+        layers,
+        clearCanvas: false
+      });
+    }
   }
 
+  // End of render cycle, clear generated viewport
+  deck.props.userData.currentViewport = null;
+}
+
+function onMapMove(deck, map) {
+  deck.setProps({
+    viewState: getViewState(map)
+  });
+  // Camera changed, will trigger a map repaint right after this
+  // Clear any change flag triggered by setting viewState so that deck does not request
+  // a second repaint
   deck.needsRedraw({clearRedrawFlags: true});
+}
+
+function getLayers(deck, layerFilter) {
+  const layers = deck.layerManager.getLayers();
+  return layers.filter(layerFilter);
 }
 
 function shouldDrawLayer(id, layer) {
@@ -132,74 +192,4 @@ function updateLayers(deck) {
     layers.push(layer);
   });
   deck.setProps({layers});
-}
-
-// Triggers picking on a mouse event
-function handleMouseEvent(deck, event) {
-  // reset layerFilter to allow all layers during picking
-  deck.layerManager.layerFilter = null;
-
-  let callback;
-  switch (event.type) {
-    case 'click':
-      callback = deck._onClick;
-      break;
-
-    case 'mousemove':
-    case 'pointermove':
-      callback = deck._onPointerMove;
-      break;
-
-    case 'mouseleave':
-    case 'pointerleave':
-      callback = deck._onPointerLeave;
-      break;
-
-    default:
-      return;
-  }
-
-  if (!event.offsetCenter) {
-    // Map from mapbox's MapMouseEvent object to mjolnir.js' Event object
-    event = {
-      offsetCenter: event.point,
-      srcEvent: event.originalEvent
-    };
-  }
-
-  // Work around for https://github.com/mapbox/mapbox-gl-js/issues/7801
-  const {gl} = deck.layerManager.context;
-  withParameters(
-    gl,
-    {
-      depthMask: true,
-      depthTest: true,
-      depthRange: [0, 1],
-      colorMask: [true, true, true, true]
-    },
-    () => callback(event)
-  );
-}
-
-// Register deck callbacks for pointer events
-function initEvents(map, deck) {
-  const pickingEventHandler = event => handleMouseEvent(deck, event);
-
-  if (deck.eventManager) {
-    // Replace default event handlers with our own ones
-    deck.eventManager.off({
-      click: deck._onClick,
-      pointermove: deck._onPointerMove,
-      pointerleave: deck._onPointerLeave
-    });
-    deck.eventManager.on({
-      click: pickingEventHandler,
-      pointermove: pickingEventHandler,
-      pointerleave: pickingEventHandler
-    });
-  } else {
-    map.on('click', pickingEventHandler);
-    map.on('mousemove', pickingEventHandler);
-    map.on('mouseleave', pickingEventHandler);
-  }
 }

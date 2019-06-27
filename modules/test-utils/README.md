@@ -1,4 +1,4 @@
-# @deck.gl/test-utils
+# @cgcs2000/deck.gl.test-utils
 
 Test utilities for deck.gl
 

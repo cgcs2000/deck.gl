@@ -21,9 +21,9 @@
 /* eslint-disable no-console, no-invalid-this */
 
 import {Layer, ScatterplotLayer, LineLayer} from 'deck.gl';
-import {inheritsFrom} from '@deck.gl/core/utils/inherits-from';
+import {inheritsFrom} from '@cgcs2000/deck.gl.core/utils/inherits-from';
 
-import {fp64} from 'luma.gl';
+import {fp64} from '@luma.gl/core';
 const {fp64ify, fp64LowPart} = fp64;
 
 const POSITION = [-122.4, 37.8, 0];

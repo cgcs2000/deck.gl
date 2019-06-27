@@ -11,7 +11,8 @@ The `DeckGL` class is a React wrapper of the `Deck` JavaScript class which expos
 
 ```js
 // Basic usage
-import DeckGL, {ScatterplotLayer} from 'deck.gl';
+import DeckGL from '@deck.gl/react';
+import {ScatterplotLayer} from '@deck.gl/layers';
 
 const App = (data) => (
   <DeckGL
@@ -25,7 +26,7 @@ const App = (data) => (
 Like any React component, `DeckGL` can accept child components. Child components are often maps (e.g. the `StaticMap` component from react-map-gl), but can be any React components.
 
 ```js
-import DeckGL from 'deck.gl';
+import DeckGL from '@deck.gl/react';
 import {StaticMap} from 'react-map-gl';
 
 const App = (data) => (
@@ -46,6 +47,27 @@ const App = (data) => (
 
 `DeckGL` accepts all [Deck](/docs/api-reference/deck.md#properties) properties, with these additional semantics:
 
+### React Context
+
+##### `ContextProvider` (React.Component, optional)
+
+A [Context.Provider](https://reactjs.org/docs/context.html#contextprovider) component. If supplied, will be rendered as the ancester to all children. The passed through context contains the following values:
+
+- `viewport` ([Viewport](/docs/api-reference/viewport.md)) - the current viewport
+- `container` (DOMElement) - the DOM element containing the deck canvas
+- `eventManager` ([EventManager](https://github.com/uber-web/mjolnir.js/blob/master/docs/api-reference/event-manager.md))
+
+```jsx
+/// Example using react-map-gl controls with deck.gl
+import DeckGL from '@deck.gl/react';
+import {_MapContext as MapContext, NavigationControl} from 'react-map-gl';
+
+<DeckGL ... ContextProvider={MapContext.Provider}>
+  <div style={NAVIGATION_CONTROL_STYLES}>
+    <NavigationControl />
+  </div>
+</DeckGL>
+```
 
 ### View State Properties
 
@@ -202,4 +224,4 @@ We do recommend you to use the pure JavaScript version of deck.gl if you are mor
 
 ## Source
 
-[modules/react/src/deckgl.js](https://github.com/uber/deck.gl/tree/6.4-release/modules/react/src/deckgl.js)
+[modules/react/src/deckgl.js](https://github.com/uber/deck.gl/tree/7.1-release/modules/react/src/deckgl.js)

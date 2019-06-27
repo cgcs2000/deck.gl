@@ -18,15 +18,25 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import {CompositeLayer, log} from '@cgcs2000/deck.gl.core';
+import {CompositeLayer, log, createIterable} from '@cgcs2000/deck.gl.core';
 import MultiIconLayer from './multi-icon-layer/multi-icon-layer';
-import {
-  makeFontAtlas,
+import FontAtlasManager, {
   DEFAULT_CHAR_SET,
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_WEIGHT,
-  DEFAULT_FONT_SETTINGS
-} from './font-atlas';
+  DEFAULT_FONT_SIZE,
+  DEFAULT_BUFFER,
+  DEFAULT_RADIUS,
+  DEFAULT_CUTOFF
+} from './font-atlas-manager';
+
+const DEFAULT_FONT_SETTINGS = {
+  fontSize: DEFAULT_FONT_SIZE,
+  buffer: DEFAULT_BUFFER,
+  sdf: false,
+  radius: DEFAULT_RADIUS,
+  cutoff: DEFAULT_CUTOFF
+};
 
 const TEXT_ANCHOR = {
   start: 1,
@@ -47,7 +57,11 @@ const FONT_SETTINGS_PROPS = ['fontSize', 'buffer', 'sdf', 'radius', 'cutoff'];
 
 const defaultProps = {
   fp64: false,
+  billboard: true,
   sizeScale: 1,
+  sizeUnits: 'pixels',
+  sizeMinPixels: 0,
+  sizeMaxPixels: Number.MAX_SAFE_INTEGER,
 
   characterSet: DEFAULT_CHAR_SET,
   fontFamily: DEFAULT_FONT_FAMILY,
@@ -65,10 +79,16 @@ const defaultProps = {
 };
 
 export default class TextLayer extends CompositeLayer {
+  initializeState() {
+    this.state = {
+      fontAtlasManager: new FontAtlasManager(this.context.gl)
+    };
+  }
+
   updateState({props, oldProps, changeFlags}) {
     const fontChanged = this.fontChanged(oldProps, props);
     if (fontChanged) {
-      this.updateFontAtlas();
+      this.updateFontAtlas({oldProps, props});
     }
 
     if (
@@ -81,22 +101,34 @@ export default class TextLayer extends CompositeLayer {
     }
   }
 
-  updateFontAtlas() {
-    const {gl} = this.context;
-    const {fontSettings, fontFamily, fontWeight, characterSet} = this.props;
+  finalizeState() {
+    super.finalizeState();
+    // Release resources held by the font atlas manager
+    this.state.fontAtlasManager.finalize();
+  }
 
-    const mergedFontSettings = Object.assign({}, DEFAULT_FONT_SETTINGS, fontSettings, {
-      fontFamily,
-      fontWeight,
-      characterSet
-    });
-    const {scale, mapping, texture} = makeFontAtlas(gl, mergedFontSettings);
+  updateFontAtlas({oldProps, props}) {
+    const {characterSet, fontSettings, fontFamily, fontWeight} = props;
+
+    // generate test characterSet
+    const fontAtlasManager = this.state.fontAtlasManager;
+    fontAtlasManager.setProps(
+      Object.assign({}, DEFAULT_FONT_SETTINGS, fontSettings, {
+        characterSet,
+        fontFamily,
+        fontWeight
+      })
+    );
+
+    const {scale, texture, mapping} = fontAtlasManager;
 
     this.setState({
       scale,
       iconAtlas: texture,
       iconMapping: mapping
     });
+
+    this.setNeedsRedraw(true);
   }
 
   fontChanged(oldProps, props) {
@@ -133,9 +165,11 @@ export default class TextLayer extends CompositeLayer {
     const {iconMapping} = this.state;
 
     const transformedData = [];
-    let objectIndex = 0;
-    for (const val of data) {
-      const text = getText(val);
+
+    const {iterable, objectInfo} = createIterable(data);
+    for (const object of iterable) {
+      objectInfo.index++;
+      const text = getText(object, objectInfo);
       if (text) {
         const letters = Array.from(text);
         const offsets = [0];
@@ -148,8 +182,8 @@ export default class TextLayer extends CompositeLayer {
             offsets,
             len: text.length,
             // reference of original object and object index
-            object: val,
-            objectIndex
+            object,
+            objectIndex: objectInfo.index
           };
 
           const frame = iconMapping[letter];
@@ -163,8 +197,6 @@ export default class TextLayer extends CompositeLayer {
           transformedData.push(datum);
         });
       }
-
-      objectIndex++;
     }
 
     this.setState({data: transformedData});
@@ -222,8 +254,12 @@ export default class TextLayer extends CompositeLayer {
       getAlignmentBaseline,
       getPixelOffset,
       fp64,
+      billboard,
       sdf,
       sizeScale,
+      sizeUnits,
+      sizeMinPixels,
+      sizeMaxPixels,
       transitions,
       updateTriggers
     } = this.props;
@@ -244,7 +280,11 @@ export default class TextLayer extends CompositeLayer {
         getAnchorY: this.getAnchorYFromAlignmentBaseline(getAlignmentBaseline),
         getPixelOffset: this._getAccessor(getPixelOffset),
         fp64,
+        billboard,
         sizeScale: sizeScale * scale,
+        sizeUnits,
+        sizeMinPixels: sizeMinPixels * scale,
+        sizeMaxPixels: sizeMaxPixels * scale,
 
         transitions: transitions && {
           getPosition: transitions.getPosition,

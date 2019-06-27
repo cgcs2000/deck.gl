@@ -1,26 +1,18 @@
+import {COORDINATE_SYSTEM} from '@deck.gl/core';
 import {
-  COORDINATE_SYSTEM,
   ScatterplotLayer,
   LineLayer,
   PointCloudLayer,
-  ScreenGridLayer,
   GeoJsonLayer,
   PathLayer,
   TextLayer
   //  ContourLayer
-} from 'deck.gl';
+} from '@deck.gl/layers';
+
+import {ScreenGridLayer} from '@deck.gl/aggregation-layers';
 
 // Demonstrate immutable support
 import * as dataSamples from '../data-samples';
-
-const LIGHT_SETTINGS = {
-  lightsPosition: [-122.45, 37.66, 8000, -122.0, 38.0, 8000],
-  ambientRatio: 0.3,
-  diffuseRatio: 0.6,
-  specularRatio: 0.4,
-  lightsStrength: [1, 0.0, 0.8, 0.0],
-  numberOfLights: 2
-};
 
 const TextLayer100KExample = {
   layer: TextLayer,
@@ -48,8 +40,7 @@ const PointCloudLayerExample = {
     getColor: d => d.color,
     opacity: 1,
     radiusPixels: 4,
-    pickable: true,
-    lightSettings: LIGHT_SETTINGS
+    pickable: true
   }
 };
 
@@ -65,8 +56,7 @@ const PointCloudLayerExample2 = {
     getColor: d => d.color,
     opacity: 1,
     radiusPixels: 4,
-    pickable: true,
-    lightSettings: LIGHT_SETTINGS
+    pickable: true
   }
 };
 
@@ -185,8 +175,6 @@ const ScreenGridLayerPerfExample = (id, getData) => ({
     id: `screenGridLayerPerf-${id}`,
     getPosition: d => d,
     cellSizePixels: 40,
-    minColor: [0, 0, 80, 0],
-    maxColor: [100, 255, 0, 128],
     pickable: false
   }
 });

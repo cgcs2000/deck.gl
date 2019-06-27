@@ -24,7 +24,7 @@ import {
   separateGeojsonFeatures,
   unwrapSourceFeature,
   unwrapSourceFeatureIndex
-} from '@deck.gl/layers/geojson-layer/geojson';
+} from '@cgcs2000/deck.gl.layers/geojson-layer/geojson';
 
 const TEST_DATA = {
   POINT: {

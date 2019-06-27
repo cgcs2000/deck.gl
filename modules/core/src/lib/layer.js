@@ -27,8 +27,8 @@ import {removeLayerInSeer} from './seer-integration';
 import {diffProps, validateProps} from '../lifecycle/props';
 import {count} from '../utils/count';
 import log from '../utils/log';
-import GL from 'luma.gl/constants';
-import {withParameters} from 'luma.gl';
+import GL from '@luma.gl/constants';
+import {withParameters} from '@luma.gl/core';
 import assert from '../utils/assert';
 import {projectPosition, getWorldPosition} from '../shaderlib/project/project-functions';
 
@@ -122,8 +122,8 @@ export default class Layer extends Component {
   }
 
   // Checks state of attributes and model
-  getNeedsRedraw({clearRedrawFlags = false} = {}) {
-    return this._getNeedsRedraw(clearRedrawFlags);
+  getNeedsRedraw(opts = {clearRedrawFlags: false}) {
+    return this._getNeedsRedraw(opts);
   }
 
   // Checks if layer attributes needs updating
@@ -235,7 +235,11 @@ export default class Layer extends Component {
   }
 
   use64bitPositions() {
-    return this.props.fp64 || this.props.coordinateSystem === COORDINATE_SYSTEM.LNGLAT;
+    return (
+      this.props.fp64 ||
+      this.props.coordinateSystem === COORDINATE_SYSTEM.LNGLAT ||
+      this.props.coordinateSystem === COORDINATE_SYSTEM.IDENTITY
+    );
   }
 
   // TODO - needs to refer to context for devicePixels setting
@@ -246,16 +250,16 @@ export default class Layer extends Component {
   }
 
   // Event handling
-  onHover(info) {
+  onHover(info, pickingEvent) {
     if (this.props.onHover) {
-      return this.props.onHover(info, this.context.pickingEvent);
+      return this.props.onHover(info, pickingEvent);
     }
     return false;
   }
 
-  onClick(info) {
+  onClick(info, pickingEvent) {
     if (this.props.onClick) {
-      return this.props.onClick(info, this.context.pickingEvent);
+      return this.props.onClick(info, pickingEvent);
     }
     return false;
   }
@@ -378,10 +382,12 @@ export default class Layer extends Component {
 
     // Figure out data length
     const numInstances = this.getNumInstances(props);
+    const bufferLayout = this.getBufferLayout(props);
 
     attributeManager.update({
       data: props.data,
       numInstances,
+      bufferLayout,
       props,
       transitions: props.transitions,
       buffers: props,
@@ -390,10 +396,13 @@ export default class Layer extends Component {
       ignoreUnknownAttributes: true
     });
 
-    const model = this.getSingleModel();
-    if (model) {
+    const models = this.getModels();
+
+    if (models.length > 0) {
       const changedAttributes = attributeManager.getChangedAttributes({clearChangedFlags: true});
-      model.setAttributes(changedAttributes);
+      for (let i = 0, len = models.length; i < len; ++i) {
+        this._setModelAttributes(models[i], changedAttributes);
+      }
     }
   }
 
@@ -401,7 +410,7 @@ export default class Layer extends Component {
   updateTransition() {
     const attributeManager = this.getAttributeManager();
     if (attributeManager) {
-      attributeManager.updateTransition();
+      attributeManager.updateTransition(this.context.time);
     }
   }
 
@@ -441,6 +450,18 @@ export default class Layer extends Component {
         ? pickingColorCache.subarray(0, numInstances * size)
         : pickingColorCache
     );
+  }
+
+  _setModelAttributes(model, changedAttributes) {
+    const shaderAttributes = {};
+    const excludeAttributes = model.userData.excludeAttributes || {};
+    for (const attributeName in changedAttributes) {
+      if (!excludeAttributes[attributeName]) {
+        Object.assign(shaderAttributes, changedAttributes[attributeName].getShaderAttributes());
+      }
+    }
+
+    model.setAttributes(shaderAttributes);
   }
 
   // Sets the specified instanced picking color to null picking color. Used for multi picking.
@@ -521,6 +542,26 @@ export default class Layer extends Component {
     return count(data);
   }
 
+  // Buffer layout describes how many attribute values are packed for each data object
+  // The default (null) is one value each object.
+  // Some data formats (e.g. paths, polygons) have various length. Their buffer layout
+  //  is in the form of [L0, L1, L2, ...]
+  getBufferLayout(props) {
+    props = props || this.props;
+
+    // First Check if bufferLayout is provided as an explicit value
+    if (props.bufferLayout !== undefined) {
+      return props.bufferLayout;
+    }
+
+    // Second check if the layer has set its own value
+    if (this.state && this.state.bufferLayout !== undefined) {
+      return this.state.bufferLayout;
+    }
+
+    return null;
+  }
+
   // LAYER MANAGER API
   // Should only be called by the deck.gl LayerManager class
 
@@ -546,7 +587,6 @@ export default class Layer extends Component {
     if (model) {
       model.id = this.props.id;
       model.program.id = `${this.props.id}-program`;
-      model.geometry.id = `${this.props.id}-geometry`;
     }
   }
 
@@ -771,7 +811,7 @@ ${flags.viewportChanged ? 'viewport' : ''}\
   }
 
   // Checks state of attributes and model
-  _getNeedsRedraw(clearRedrawFlags) {
+  _getNeedsRedraw(opts) {
     // this method may be called by the render loop as soon a the layer
     // has been created, so guard against uninitialized state
     if (!this.internalState) {
@@ -780,28 +820,12 @@ ${flags.viewportChanged ? 'viewport' : ''}\
 
     let redraw = false;
     redraw = redraw || (this.internalState.needsRedraw && this.id);
-    this.internalState.needsRedraw = this.internalState.needsRedraw && !clearRedrawFlags;
+    this.internalState.needsRedraw = this.internalState.needsRedraw && !opts.clearRedrawFlags;
 
     // TODO - is attribute manager needed? - Model should be enough.
     const attributeManager = this.getAttributeManager();
-    const attributeManagerNeedsRedraw =
-      attributeManager && attributeManager.getNeedsRedraw({clearRedrawFlags});
-    const modelNeedsRedraw = this._modelNeedsRedraw(clearRedrawFlags);
-    redraw = redraw || attributeManagerNeedsRedraw || modelNeedsRedraw;
-
-    return redraw;
-  }
-
-  _modelNeedsRedraw(clearRedrawFlags) {
-    let redraw = false;
-
-    for (const model of this.getModels()) {
-      let modelNeedsRedraw = model.getNeedsRedraw({clearRedrawFlags});
-      if (modelNeedsRedraw && typeof modelNeedsRedraw !== 'string') {
-        modelNeedsRedraw = `model ${model.id}`;
-      }
-      redraw = redraw || modelNeedsRedraw;
-    }
+    const attributeManagerNeedsRedraw = attributeManager && attributeManager.getNeedsRedraw(opts);
+    redraw = redraw || attributeManagerNeedsRedraw;
 
     return redraw;
   }

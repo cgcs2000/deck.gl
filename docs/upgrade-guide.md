@@ -1,5 +1,108 @@
 # Upgrade Guide
 
+## Upgrading from deck.gl v7.0 to v7.1
+
+### Layer Props
+
+Breaking Changes:
+
+- Fixed a bug where `coordinateOrigin`'s `z` is not applied in `METER_OFFSETS` and `LNGLAT_OFFSETS` coordinate systems.
+
+Deprecations:
+
+- `getColor` props in `ColumnLayer` and `H3HexagonLayer` are deprecated. Use `getLineColor` and `getFillColor` instead.
+
+### GridLayer
+
+Breaking Changes:
+
+- If your application is not subclassing `GridLayer`, no additional changes are needed. If you are subclassing `GridLayer`, you should now subclass `CPUGridLayer` instead, and either use it directly, or provide it as the sublayer class for `GridLayer` using `_subLayerProps`:
+
+```js
+class EnhancedCPUGridLayer extends CPUGridLayer {
+// enhancments
+}
+
+// Code initilizing GridLayer
+const myGridLayer = new GridLayer({
+  // props
+  ...
+  // Override sublayer type for 'CPU'
+  _subLayerProps: {
+    CPU: {
+      type: EnhancedCPUGridLayer
+    }
+  }
+});
+```
+
+
+## Upgrading from deck.gl v6.4 to v7.0
+
+#### Submodule Structure and Dependency Changes
+
+- ` @deck.gl/core` is moved from `dependencies` to `devDependencies` for all submodules. This will reduce the runtime error caused by installing multiple copies of the core.
+- The master module `deck.gl` now include all submodules except ` @deck.gl/test-utils`. See [list of submodules](/docs/get-started/getting-started.md#selectively-install-dependencies) for details.
+- `ContourLayer`, `GridLayer`, `HexagonLayer` and `ScreenGridLayer` are moved from ` @deck.gl/layers` to ` @deck.gl/aggregation-layers`. No action is required if you are importing them from `deck.gl`.
+- ` @deck.gl/experimental-layers` is deprecated. Experimental layers will be exported from their respective modules with a `_` prefix.
+  + `BitmapLayer` is moved to ` @deck.gl/layers`.
+  + `MeshLayer` is renamed to `SimpleMeshLayer` and moved to ` @deck.gl/mesh-layers`.
+  + `TileLayer` and `TripsLayer` are moved to ` @deck.gl/geo-layers`.
+
+#### Deck Class
+
+Breaking Changes:
+
+- `onLayerHover` and `onLayerClick` props are replaced with `onHover` and `onClick`. The first argument passed to the callback will always be a valid [picking info](/docs/developer-guide/interactivity.md#the-picking-info-object) object, and the second argument is the pointer event. This change makes these two events behave consistently with other event callbacks.
+
+#### Layers
+
+Deprecations:
+
+- `ArcLayer` and `LineLayer`'s `getStrokeWidth` props are deprecated. Use `getWidth` instead.
+
+Breaking Changes:
+
+- `HexagonCellLayer` is removed. Use [ColumnLayer](/docs/layers/column-layer.md) with `diskResolution: 6` instead.
+- A bug in projecting elevation was fixed in `HexagonLayer`, `GridLayer` and `GridCellLayer`. The resulting heights of extruded grids/hexagons have changed. You may adjust them to match previous behavior by tweaking `elevationScale`.
+- The following former experimental layers' APIs are redesigned as they graduate to official layers. Refer to their documentations for details:
+  - [BitmapLayer](/docs/layers/column-layer.md)
+  - [SimpleMeshLayer](/docs/layers/simple-mesh-layer.md)
+  - [TileLayer](/docs/layers/tile-layer.md)
+  - [TripsLayer](/docs/layers/trips-layer.md)
+
+#### Lighting
+
+The old experimental prop `lightSettings` in many 3D layers is no longer supported. The new and improved settings are split into two places: a [material](https://github.com/uber/luma.gl/tree/master/docs/api-reference/core/materials) prop for each 3D layer and a shared set of lights specified by [LightingEffect](/docs/effects/lighting-effect.md) with the [effects prop of Deck](/docs/api-reference/deck.md#effects).
+Check [Using Lighting](/docs/developer-guide/using-lighting.md) in developer guide for more details.
+
+#### Views
+
+v7.0 includes major bug fixes for [OrbitView](/docs/api-reference/orbit-view.md) and [OrthographicView](/docs/api-reference/orthographic-view.md). Their APIs are also changed for better clarity and consistency.
+
+Breaking Changes:
+
+* View state: `zoom` is now logarithmic in all `View` classes. `zoom: 0` maps one unit in world space to one pixel in screen space.
+* View state: `minZoom` and `maxZoom` now default to no limit.
+* View state: `offset` (pixel-shift of the viewport center) is removed, use `target` (world position `[x, y, z]` of the viewport center) instead.
+* Constructor prop: added `target` to specify the viewport center in world position.
+* `OrthographicView`'s constructor props `left`, `right`, `top` and `bottom` are removed. Use `target` to specify viewport center.
+* `OrbitView`'s constructor prop `distance` and static method `getDistance` are removed. Use `fovy` and `zoom` instead.
+
+#### project Shader Module
+
+Deprecations:
+
+- `project_scale` -> `project_size`
+- `project_to_clipspace` -> `project_common_position_to_clipspace`
+- `project_to_clipspace_fp64` -> `project_common_position_to_clipspace_fp64`
+- `project_pixel_to_clipspace` -> `project_pixel_size_to_clipspace`
+
+#### React
+
+If you are using DeckGL with react-map-gl, ` @deck.gl/react@^7.0.0` no longer works with react-map-gl v3.x.
+
+
 ## Upgrading from deck.gl v6.3 to v6.4
 
 #### OrthographicView
@@ -50,7 +153,7 @@ Shallow changes in `getColorValue` and `getElevationValue` props are now ignored
 
 #### Prop Types in Custom Layers
 
-Although the [prop types system](/docs/developer-guide/prop-types.md) is largely backward-compatible, it is possible that some custom layers may stop updating when a certain prop changes. This is because the automatically deduced prop type from `defaultProps` does not match its desired usage. Switch to explicit descriptors will fix the issue, e.g. from:
+Although the [prop types system](/docs/developer-guide/custom-layers/prop-types.md) is largely backward-compatible, it is possible that some custom layers may stop updating when a certain prop changes. This is because the automatically deduced prop type from `defaultProps` does not match its desired usage. Switch to explicit descriptors will fix the issue, e.g. from:
 
 ```js
 MyLayer.defaultProps = {
@@ -86,11 +189,11 @@ deck.gl v6.0 brings in luma.gl v6.0 which is a major release with a few breaking
 
 Pixel sizes in line, icon and text layers now match their HTML/SVG counterparts. To achieve the same rendering output as v5, you should use half the previous value in the following props:
 
-- `ArcLayer.getStrokeWidth`
-- `LineLayer.getStrokeWidth`
-- `IconLayer.getSize` or `IconLayer.sizeScale`
-- `TextLayer.getSize` or `TextLayer.sizeScale`
-- `PointCloudLayer.radiusPixels`
+* `ArcLayer.getStrokeWidth`
+* `LineLayer.getStrokeWidth`
+* `IconLayer.getSize` or `IconLayer.sizeScale`
+* `TextLayer.getSize` or `TextLayer.sizeScale`
+* `PointCloudLayer.radiusPixels`
 
 
 #### Accessors
@@ -100,10 +203,10 @@ All layer accessors that support constant values have had their default values c
 
 #### Views and Controllers
 
-- (React only) Viewport constraint props: `maxZoom`, `minZoom`, `maxPitch`, `minPitch` are no longer supported by the `DeckGL` component. They must be specified as part of the `viewState` object.
-- (React only) `ViewportController` React component has been removed. The functionality is now built in to the `Deck` and `DeckGL` classes.
-- `Deck.onViewportChange(viewport)` etc callbacks are no longer supported. Use `Deck.onViewStateChange({viewState})`
-- `DeckGL.viewport` and `DeckGL.viewports` props are no longer supported. Use `DeckGL.views`.
+* (React only) Viewport constraint props: `maxZoom`, `minZoom`, `maxPitch`, `minPitch` are no longer supported by the `DeckGL` component. They must be specified as part of the `viewState` object.
+* (React only) `ViewportController` React component has been removed. The functionality is now built in to the `Deck` and `DeckGL` classes.
+* `Deck.onViewportChange(viewport)` etc callbacks are no longer supported. Use `Deck.onViewStateChange({viewState})`
+* `DeckGL.viewport` and `DeckGL.viewports` props are no longer supported. Use `DeckGL.views`.
 
 
 #### ScreenGridLayer
@@ -159,17 +262,17 @@ Users of `deck.gl` are not affected by this change.
 
 ### DeckGL component
 
-- `DeckGL.viewports` and `DeckGL.viewport` are deprecated and should be replaced with `DeckGL.views`.
+* `DeckGL.viewports` and `DeckGL.viewport` are deprecated and should be replaced with `DeckGL.views`.
 
 ### Viewport classes
 
-- A number of `Viewport` subclasses have been deprecated. They should be replaced with their `View` counterparts.
+* A number of `Viewport` subclasses have been deprecated. They should be replaced with their `View` counterparts.
 
 ### Experimental Features
 
 Some experimental exports have been removed:
 
-- The experimental React controller components (`MapController` and `OrbitController`) have been removed. These are now replaced with JavaScript classes that can be used with the `Deck.controller` / `DeckGL.controller` property.
+* The experimental React controller components (`MapController` and `OrbitController`) have been removed. These are now replaced with JavaScript classes that can be used with the `Deck.controller` / `DeckGL.controller` property.
 
 
 ## Upgrading from deck.gl v5 to v5.1
@@ -252,7 +355,7 @@ Be aware that deck.gl 4.1 bumps the luma.gl peer dependency from 3.0 to 4.0. The
 
 ### Layer Life Cycle Optimization
 
-- **shouldUpdateState** - deck.gl v4.1 contains additional optimizations of the layer lifecycle and layer diffing algorithms. Most of these changes are completely under the hood but one  visible change is that the default implementation of `Layer.shouldUpdate` no longer returns true if only the viewport has changed. This means that layers that need to update state in response to changes in screen space (viewport) will need to redefine `shouldUpdate`:
+* **shouldUpdateState** - deck.gl v4.1 contains additional optimizations of the layer lifecycle and layer diffing algorithms. Most of these changes are completely under the hood but one  visible change is that the default implementation of `Layer.shouldUpdate` no longer returns true if only the viewport has changed. This means that layers that need to update state in response to changes in screen space (viewport) will need to redefine `shouldUpdate`:
 
 ```js
   shouldUpdateState({changeFlags}) {
@@ -264,7 +367,7 @@ Note that this change has already been done in all the provided deck.gl layers t
 
 ### luma.gl `Model` class API change
 
-- deck.gl v4.1 bumps luma.gl to from v3 to v4. This is major release that brings full WebGL2 enablement to deck.gl. This should not affect you if you are mainly using the provided deck.gl layers but if you are writing your own layers using luma.gl classes you may want to look at the upgrade guide of luma.gl.
+* deck.gl v4.1 bumps luma.gl to from v3 to v4. This is major release that brings full WebGL2 enablement to deck.gl. This should not affect you if you are mainly using the provided deck.gl layers but if you are writing your own layers using luma.gl classes you may want to look at the upgrade guide of luma.gl.
 
 The `gl` parameter is provided as a separate argument in luma.gl v4, instead of part of the options object.
 
@@ -313,7 +416,7 @@ const model = new Model({
 | `ChoroplethLayer64` | Removed | `GeoJsonLayer`, `PolygonLayer` and `PathLayer`    |
 | `ExtrudedChoroplethLayer` | Removed | `GeoJsonLayer`, `PolygonLayer` and `PathLayer`    |
 
-- ChoroplethLayer, ChoroplethLayer64, ExtrudedChoroplethLayer
+* ChoroplethLayer, ChoroplethLayer64, ExtrudedChoroplethLayer
 
 These set of layers were deprecated in deck.gl v4, and are now removed in v5. You can still get same functionality using more unified, flexible and performant layers:
  `GeoJsonLayer`, `PolygonLayer` and `PathLayer`.
@@ -343,14 +446,14 @@ While it would have been preferable to avoid this change, a significant moderniz
 | `ExtrudedChoroplethLayer` | Deprecated | `GeoJsonLayer`, `PolygonLayer` and `PathLayer`    |
 | `EnhancedChoroplethLayer`  | Moved to examples  | `PathLayer`    |
 
-- ChoroplethLayer, ChoroplethLayer64, ExtrudedChoroplethLayer
+* ChoroplethLayer, ChoroplethLayer64, ExtrudedChoroplethLayer
 
 These set of layers are deprecated in deck.gl v4, with their functionality completely substituted by more unified, flexible and performant new layers:
  `GeoJsonLayer`, `PolygonLayer` and `PathLayer`.
 
 Developers should be able to just supply the same geojson data that are used with `ChoroplethLayer`s to the new `GeoJsonLayer`. The props of the `GeoJsonLayer` are a bit different from the old `ChoroplethLayer`, so proper testing is recommended to achieve satisfactory result.
 
-- EnhancedChoroplethLayer
+* EnhancedChoroplethLayer
 
 This was a a sample layer in deck.gl v3 and has now been moved to a stand-alone example and is no longer exported from the deck.gl npm module.
 

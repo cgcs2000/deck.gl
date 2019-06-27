@@ -19,10 +19,10 @@
 // THE SOFTWARE.
 
 /* eslint-disable dot-notation, max-statements, no-unused-vars */
-import AttributeManager from '@deck.gl/core/lib/attribute-manager';
-import GL from 'luma.gl/constants';
+import AttributeManager from '@cgcs2000/deck.gl.core/lib/attribute-manager';
+import GL from '@luma.gl/constants';
 import test from 'tape-catch';
-import {gl} from '@deck.gl/test-utils';
+import {gl} from '@cgcs2000/deck.gl.test-utils';
 
 function update(attribute, {data}) {
   const {value, size} = attribute;

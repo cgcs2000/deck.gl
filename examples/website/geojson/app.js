@@ -30,16 +30,7 @@ export const COLOR_SCALE = scaleThreshold()
     [128, 0, 38]
   ]);
 
-const LIGHT_SETTINGS = {
-  lightsPosition: [-125, 50.5, 5000, -122.8, 48.5, 8000],
-  ambientRatio: 0.2,
-  diffuseRatio: 0.5,
-  specularRatio: 0.3,
-  lightsStrength: [2.0, 0.0, 1.0, 0.0],
-  numberOfLights: 2
-};
-
-export const INITIAL_VIEW_STATE = {
+const INITIAL_VIEW_STATE = {
   latitude: 49.254,
   longitude: -123.13,
   zoom: 11,
@@ -79,7 +70,6 @@ export class App extends Component {
         getElevation: f => Math.sqrt(f.properties.valuePerSqm) * 10,
         getFillColor: f => COLOR_SCALE(f.properties.growth),
         getLineColor: [255, 255, 255],
-        lightSettings: LIGHT_SETTINGS,
         pickable: true,
         onHover: this._onHover
       })
@@ -110,23 +100,16 @@ export class App extends Component {
   }
 
   render() {
-    const {viewState, controller = true, baseMap = true} = this.props;
+    const {mapStyle = 'mapbox://styles/mapbox/light-v9'} = this.props;
 
     return (
-      <DeckGL
-        layers={this._renderLayers()}
-        initialViewState={INITIAL_VIEW_STATE}
-        viewState={viewState}
-        controller={controller}
-      >
-        {baseMap && (
-          <StaticMap
-            reuseMaps
-            mapStyle="mapbox://styles/mapbox/light-v9"
-            preventStyleDiffing={true}
-            mapboxApiAccessToken={MAPBOX_TOKEN}
-          />
-        )}
+      <DeckGL layers={this._renderLayers()} initialViewState={INITIAL_VIEW_STATE} controller={true}>
+        <StaticMap
+          reuseMaps
+          mapStyle={mapStyle}
+          preventStyleDiffing={true}
+          mapboxApiAccessToken={MAPBOX_TOKEN}
+        />
 
         {this._renderTooltip}
       </DeckGL>

@@ -2,10 +2,10 @@
 import React, {Component} from 'react';
 import {render} from 'react-dom';
 import {StaticMap} from 'react-map-gl';
-import DeckGL from '@deck.gl/react';
-import {View, MapView} from '@deck.gl/core';
-import {PolygonLayer} from '@deck.gl/layers';
-import {TripsLayer} from '@deck.gl/experimental-layers';
+import DeckGL from '@cgcs2000/deck.gl.react';
+import {View, MapView} from '@cgcs2000/deck.gl.core';
+import {PolygonLayer} from '@cgcs2000/deck.gl.layers';
+import {TripsLayer} from '@cgcs2000/deck.gl.experimental-layers';
 
 // Set your mapbox token here
 const MAPBOX_TOKEN = process.env.MapboxAccessToken; // eslint-disable-line

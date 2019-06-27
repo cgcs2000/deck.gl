@@ -1,13 +1,13 @@
 import coreLayerExamples from './core-layers';
-import experimentalLayerExamples from './experimental-layers';
-// import sampleLayerExamples from './sample-layers';
+import meshLayerExamples from './mesh-layers';
+import additionalLayerExamples from './additional-layers';
 import infovisLayerExamples from './infovis-layers';
 import perfLayerExamples from './perf-layers';
 
 export default {
   ...coreLayerExamples,
-  ...experimentalLayerExamples,
+  ...meshLayerExamples,
+  ...additionalLayerExamples,
   ...infovisLayerExamples,
-  // ...sampleLayerExamples,
   ...perfLayerExamples
 };

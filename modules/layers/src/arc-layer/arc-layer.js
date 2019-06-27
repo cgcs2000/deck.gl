@@ -18,10 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import {Layer} from '@cgcs2000/deck.gl.core';
+import {Layer, createIterable} from '@cgcs2000/deck.gl.core';
 
-import GL from 'luma.gl/constants';
-import {Model, Geometry, fp64} from 'luma.gl';
+import GL from '@luma.gl/constants';
+import {Model, Geometry, fp64} from '@luma.gl/core';
 const {fp64LowPart} = fp64;
 
 import vs from './arc-layer-vertex.glsl';
@@ -37,11 +37,17 @@ const defaultProps = {
   getTargetPosition: {type: 'accessor', value: x => x.targetPosition},
   getSourceColor: {type: 'accessor', value: DEFAULT_COLOR},
   getTargetColor: {type: 'accessor', value: DEFAULT_COLOR},
-  getStrokeWidth: {type: 'accessor', value: 1},
-  widthScale: {type: 'number', value: 1, min: 0},
+  getWidth: {type: 'accessor', value: 1},
+  getHeight: {type: 'accessor', value: 1},
+  getTilt: {type: 'accessor', value: 0},
 
-  // deprecated
-  strokeWidth: {deprecatedFor: 'getStrokeWidth'}
+  widthUnits: 'pixels',
+  widthScale: {type: 'number', value: 1, min: 0},
+  widthMinPixels: {type: 'number', value: 0, min: 0},
+  widthMaxPixels: {type: 'number', value: Number.MAX_SAFE_INTEGER, min: 0},
+
+  // Deprecated, remove in v8
+  getStrokeWidth: {deprecatedFor: 'getWidth'}
 };
 
 export default class ArcLayer extends Layer {
@@ -84,8 +90,20 @@ export default class ArcLayer extends Layer {
       instanceWidths: {
         size: 1,
         transition: true,
-        accessor: 'getStrokeWidth',
+        accessor: 'getWidth',
         defaultValue: 1
+      },
+      instanceHeights: {
+        size: 1,
+        transition: true,
+        accessor: 'getHeight',
+        defaultValue: 1
+      },
+      instanceTilts: {
+        size: 1,
+        transition: true,
+        accessor: 'getTilt',
+        defaultValue: 0
       }
     });
     /* eslint-enable max-len */
@@ -102,10 +120,23 @@ export default class ArcLayer extends Layer {
       this.setState({model: this._getModel(gl)});
       this.getAttributeManager().invalidateAll();
     }
+  }
 
-    this.state.model.setUniforms({
-      widthScale: props.widthScale
-    });
+  draw({uniforms}) {
+    const {viewport} = this.context;
+    const {widthUnits, widthScale, widthMinPixels, widthMaxPixels} = this.props;
+
+    const widthMultiplier = widthUnits === 'pixels' ? viewport.distanceScales.metersPerPixel[2] : 1;
+
+    this.state.model
+      .setUniforms(
+        Object.assign({}, uniforms, {
+          widthScale: widthScale * widthMultiplier,
+          widthMinPixels,
+          widthMaxPixels
+        })
+      )
+      .draw();
   }
 
   _getModel(gl) {
@@ -142,22 +173,25 @@ export default class ArcLayer extends Layer {
     return model;
   }
 
-  calculateInstancePositions(attribute) {
+  calculateInstancePositions(attribute, {startRow, endRow}) {
     const {data, getSourcePosition, getTargetPosition} = this.props;
     const {value, size} = attribute;
-    let i = 0;
-    for (const object of data) {
-      const sourcePosition = getSourcePosition(object);
-      const targetPosition = getTargetPosition(object);
-      value[i + 0] = sourcePosition[0];
-      value[i + 1] = sourcePosition[1];
-      value[i + 2] = targetPosition[0];
-      value[i + 3] = targetPosition[1];
-      i += size;
+    let i = startRow * size;
+    const {iterable, objectInfo} = createIterable(data, startRow, endRow);
+    for (const object of iterable) {
+      objectInfo.index++;
+      const sourcePosition = getSourcePosition(object, objectInfo);
+      value[i++] = sourcePosition[0];
+      value[i++] = sourcePosition[1];
+      // Call `getTargetPosition` after `sourcePosition` is used in case both accessors write into
+      // the same temp array
+      const targetPosition = getTargetPosition(object, objectInfo);
+      value[i++] = targetPosition[0];
+      value[i++] = targetPosition[1];
     }
   }
 
-  calculateInstancePositions64Low(attribute) {
+  calculateInstancePositions64Low(attribute, {startRow, endRow}) {
     const isFP64 = this.use64bitPositions();
     attribute.constant = !isFP64;
 
@@ -168,15 +202,18 @@ export default class ArcLayer extends Layer {
 
     const {data, getSourcePosition, getTargetPosition} = this.props;
     const {value, size} = attribute;
-    let i = 0;
-    for (const object of data) {
-      const sourcePosition = getSourcePosition(object);
-      const targetPosition = getTargetPosition(object);
-      value[i + 0] = fp64LowPart(sourcePosition[0]);
-      value[i + 1] = fp64LowPart(sourcePosition[1]);
-      value[i + 2] = fp64LowPart(targetPosition[0]);
-      value[i + 3] = fp64LowPart(targetPosition[1]);
-      i += size;
+    let i = startRow * size;
+    const {iterable, objectInfo} = createIterable(data, startRow, endRow);
+    for (const object of iterable) {
+      objectInfo.index++;
+      const sourcePosition = getSourcePosition(object, objectInfo);
+      value[i++] = fp64LowPart(sourcePosition[0]);
+      value[i++] = fp64LowPart(sourcePosition[1]);
+      // Call `getTargetPosition` after `sourcePosition` is used in case both accessors write into
+      // the same temp array
+      const targetPosition = getTargetPosition(object, objectInfo);
+      value[i++] = fp64LowPart(targetPosition[0]);
+      value[i++] = fp64LowPart(targetPosition[1]);
     }
   }
 }

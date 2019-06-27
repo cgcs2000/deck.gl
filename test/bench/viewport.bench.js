@@ -19,12 +19,12 @@
 // THE SOFTWARE.
 
 /* eslint-disable no-console, no-invalid-this */
-import * as data from 'deck.gl/test/data';
+import * as data from 'deck.gl-test/data';
 
 import {WebMercatorViewport} from 'deck.gl';
 
-import {COORDINATE_SYSTEM} from '@deck.gl/core/lib/constants';
-import {getUniformsFromViewport} from '@deck.gl/core/shaderlib/project/viewport-uniforms';
+import {COORDINATE_SYSTEM} from '@cgcs2000/deck.gl.core/lib/constants';
+import {getUniformsFromViewport} from '@cgcs2000/deck.gl.core/shaderlib/project/viewport-uniforms';
 
 const VIEWPORT_PARAMS = {
   width: 500,

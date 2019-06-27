@@ -1,7 +1,8 @@
 <!-- INJECT:"IconLayerDemo" -->
 
 <p class="badges">
-  <img src="https://img.shields.io/badge/64--bit-support-blue.svg?style=flat-square" alt="64-bit" />
+  <img src="https://img.shields.io/badge/@deck.gl/layers-lightgrey.svg?style=flat-square" alt="@deck.gl/layers" />
+  <img src="https://img.shields.io/badge/fp64-yes-blue.svg?style=flat-square" alt="64-bit" />
 </p>
 
 # IconLayer
@@ -19,7 +20,8 @@ use cases.
 ## Example: pre-packed iconAtlas
 
 ```js
-import DeckGL, {IconLayer} from 'deck.gl';
+import DeckGL from '@deck.gl/react';
+import {IconLayer} from '@deck.gl/layers';
 
 const ICON_MAPPING = {
   marker: {x: 0, y: 0, width: 32, height: 32, mask: true}
@@ -89,7 +91,7 @@ const App = ({data, viewport}) => {
    */
   const layer = new IconLayer({
     id: 'icon-layer',
-    data: octokit.repos.listContributors({
+    data: octokit.repos.getContributors({
       owner: 'uber',
       repo: 'deck.gl' 
     }).then(result => result.data),
@@ -99,18 +101,15 @@ const App = ({data, viewport}) => {
       url: d.avatar_url,
       width: 128,
       height: 128,
-      anchorY: 128,
-      mask: true
+      anchorY: 128
     }),
     // icon size is based on data point's contributions, between 2 - 25 
     getSize: d => Math.max(2, Math.min(d.contributions / 1000 * 25, 25)),
-
     pickable: true,
     sizeScale: 15,
     getPosition: d => d.coordinates,
-    getColor: d => [Math.sqrt(d.exits), 140, 0],
     onHover: ({object, x, y}) => {
-      const tooltip = `${object.name}\n${object.address}`;
+      const tooltip = `${object.login}\n${object.contributions}`;
       /* Update tooltip
          http://deck.gl/#/documentation/developer-guide/adding-interactivity?section=example-display-a-tooltip-for-hovered-object
       */
@@ -120,6 +119,36 @@ const App = ({data, viewport}) => {
   return (<DeckGL {...viewport} layers={[layer]} />);
 };
 ```
+
+
+## Installation
+
+To install the dependencies from NPM:
+
+```bash
+npm install deck.gl
+# or
+npm install @deck.gl/core @deck.gl/layers
+```
+
+```js
+import {IconLayer} from '@deck.gl/layers';
+new IconLayer({});
+```
+
+To use pre-bundled scripts:
+
+```html
+<script src="https://unpkg.com/deck.gl@~7.0.0/dist.min.js"></script>
+<!-- or -->
+<script src="https://unpkg.com/@deck.gl/core@~7.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/layers@~7.0.0/dist.min.js"></script>
+```
+
+```js
+new deck.IconLayer({});
+```
+
 
 ## Properties
 
@@ -133,13 +162,13 @@ Atlas image url or texture
 
 Icon names mapped to icon definitions. Each icon is defined with the following values:
 
-- `x`: x position of icon on the atlas image
-- `y`: y position of icon on the atlas image
-- `width`: width of icon on the atlas image
-- `height`: height of icon on the atlas image
-- `anchorX`: horizontal position of icon anchor. Default: half width.
-- `anchorY`: vertical position of icon anchor. Default: half height.
-- `mask`: whether icon is treated as a transparency mask.
+- `x` (Number, required): x position of icon on the atlas image
+- `y` (Number, required): y position of icon on the atlas image
+- `width` (Number, required): width of icon on the atlas image
+- `height` (Number, required): height of icon on the atlas image
+- `anchorX` (Number, optional): horizontal position of icon anchor. Default: half width.
+- `anchorY` (Number, optional): vertical position of icon anchor. Default: half height.
+- `mask` (Boolean, optional): whether icon is treated as a transparency mask.
   If `true`, user defined color is applied.
   If `false`, pixel color from the image is applied. User still can specify the opacity through getColor.
   Default: `false`
@@ -156,15 +185,39 @@ given pre-packed `iconAtlas`.
 
 Icon size multiplier.
 
+##### `sizeUnits` (String, optional)
+
+* Default: `pixels` 
+
+The units of the size specified by `getSize`, one of `'meters'`, `'pixels'`. When zooming in and out, meter sizes scale with the base map, and pixel sizes remain the same on screen.
+
+##### `sizeMinPixels` (Number, optional)
+
+* Default: `0`
+
+The minimum size in pixels.
+
+##### `sizeMaxPixels` (Number, optional)
+
+* Default: `Number.MAX_SAFE_INTEGER`
+
+The maximum size in pixels.
+
 ##### `fp64` (Boolean, optional)
 
 - Default: `false`
 
 Whether the layer should be rendered in high-precision 64-bit mode. Note that since deck.gl v6.1, the default 32-bit projection uses a hybrid mode that matches 64-bit precision with significantly better performance.
 
+##### `billboard` (Boolean, optional)
+
+- Default: `true`
+
+If on, the icon always faces camera. Otherwise the icon faces up (z)
+
 ### Data Accessors
 
-##### `getIcon` (Function, optional)
+##### `getIcon` ([Function](/docs/developer-guide/using-layers.md#accessors), optional)
 
 - Default: `d => d.icon`
 
@@ -176,29 +229,32 @@ used to retrieve icon definition from given `iconMapping`.
 If you choose to use auto packing, then `getIcon` should return an object which contains 
 the following properties. 
 
-- `url`: url to fetch the icon
-- `height`: height of icon
-- `width`: width of icon
+- `url` (String, required): url to fetch the icon
+- `height` (Number, required): height of icon
+- `width` (Number, required): width of icon
+- `id`: (String, optional): unique identifier of the icon, fall back to `url` if not specified 
 - `anchorX`, `anchorY`, `mask` are the same as mentioned in `iconMapping`
 
-##### `getPosition` (Function, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+`IconLayer` use `id` (fallback to `url`) to dedupe icons. If for the same icon identifier, `getIcon` returns different `width` or `height`, `IconLayer` will only apply the first occurrence and ignore the rest of them.
+
+##### `getPosition` ([Function](/docs/developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
 
 - Default: `d => d.position`
 
 Method called to retrieve the position of each object, returns `[lng, lat, z]`.
 
 
-##### `getSize` (Function|Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+##### `getSize` ([Function](/docs/developer-guide/using-layers.md#accessors)|Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
 
 - Default: `1`
 
-The height of each object, in pixels.
+The height of each object, in units specified by `sizeUnits` (default pixels).
 
 - If a number is provided, it is used as the size for all objects.
 - If a function is provided, it is called on each object to retrieve its size.
 
 
-##### `getColor` (Function|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+##### `getColor` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
 
 - Default: `[0, 0, 0, 255]`
 
@@ -208,7 +264,7 @@ The rgba color of each object, in `r, g, b, [a]`. Each component is in the 0-255
 - If a function is provided, it is called on each object to retrieve its color.
 - If `mask` = false, only the alpha component will be used to control the opacity of the icon.
 
-##### `getAngle` (Function|Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+##### `getAngle` ([Function](/docs/developer-guide/using-layers.md#accessors)|Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
 
 - Default: `0`
 
@@ -220,5 +276,5 @@ The rotating angle  of each object, in degrees.
 
 ## Source
 
-[modules/layers/src/icon-layer](https://github.com/uber/deck.gl/tree/6.4-release/modules/layers/src/icon-layer)
+[modules/layers/src/icon-layer](https://github.com/uber/deck.gl/tree/7.1-release/modules/layers/src/icon-layer)
 

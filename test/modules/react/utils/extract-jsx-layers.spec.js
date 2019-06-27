@@ -3,7 +3,7 @@ import test from 'tape-catch';
 import React, {createElement} from 'react';
 
 import {View, MapView, FirstPersonView, ScatterplotLayer, LineLayer} from 'deck.gl';
-import extractJSXLayers from '@deck.gl/react/utils/extract-jsx-layers';
+import extractJSXLayers from '@cgcs2000/deck.gl.react/utils/extract-jsx-layers';
 
 const noop = () => {};
 const mapView = new MapView({id: 'map', height: '50%'});

@@ -1,4 +1,4 @@
-import {ScatterplotLayer} from '@deck.gl/layers';
+import {ScatterplotLayer} from '@cgcs2000/deck.gl.layers';
 import dataFilter from './data-filter';
 
 const defaultProps = {

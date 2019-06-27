@@ -1,4 +1,4 @@
-# @deck.gl/mapbox
+# @cgcs2000/deck.gl.mapbox
 
 Use deck.gl layers as custom mapbox layers, enabling seamless interleaving of mapbox and deck.gl layers.
 

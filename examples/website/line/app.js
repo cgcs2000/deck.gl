@@ -3,7 +3,7 @@ import {render} from 'react-dom';
 
 import {StaticMap} from 'react-map-gl';
 import DeckGL, {LineLayer, ScatterplotLayer} from 'deck.gl';
-import GL from 'luma.gl/constants';
+import GL from '@luma.gl/constants';
 
 // Set your mapbox token here
 const MAPBOX_TOKEN = process.env.MapboxAccessToken; // eslint-disable-line
@@ -16,7 +16,7 @@ const DATA_URL = {
     'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/line/heathrow-flights.json' // eslint-disable-line
 };
 
-export const INITIAL_VIEW_STATE = {
+const INITIAL_VIEW_STATE = {
   latitude: 47.65,
   longitude: 7,
   zoom: 4.5,
@@ -72,7 +72,7 @@ export class App extends Component {
     const {
       airports = DATA_URL.AIRPORTS,
       flightPaths = DATA_URL.FLIGHT_PATHS,
-      getStrokeWidth = 3
+      getWidth = 3
     } = this.props;
 
     return [
@@ -93,7 +93,7 @@ export class App extends Component {
         getSourcePosition: d => d.start,
         getTargetPosition: d => d.end,
         getColor,
-        getStrokeWidth,
+        getWidth,
         pickable: true,
         onHover: this._onHover
       })
@@ -101,28 +101,25 @@ export class App extends Component {
   }
 
   render() {
-    const {viewState, controller = true, baseMap = true} = this.props;
+    const {mapStyle = 'mapbox://styles/mapbox/dark-v9'} = this.props;
 
     return (
       <DeckGL
         layers={this._renderLayers()}
         initialViewState={INITIAL_VIEW_STATE}
-        viewState={viewState}
-        controller={controller}
+        controller={true}
         pickingRadius={5}
         parameters={{
           blendFunc: [GL.SRC_ALPHA, GL.ONE, GL.ONE_MINUS_DST_ALPHA, GL.ONE],
           blendEquation: GL.FUNC_ADD
         }}
       >
-        {baseMap && (
-          <StaticMap
-            reuseMaps
-            mapStyle="mapbox://styles/mapbox/dark-v9"
-            preventStyleDiffing={true}
-            mapboxApiAccessToken={MAPBOX_TOKEN}
-          />
-        )}
+        <StaticMap
+          reuseMaps
+          mapStyle={mapStyle}
+          preventStyleDiffing={true}
+          mapboxApiAccessToken={MAPBOX_TOKEN}
+        />
 
         {this._renderTooltip}
       </DeckGL>

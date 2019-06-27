@@ -11,6 +11,7 @@ export {default as geojson} from '../data/sample.geo.json';
 export {default as hexagons} from '../data/hexagons.json';
 export {default as routes} from '../data/sfmta.routes.json';
 export {default as trips} from '../data/trips.json';
+export {default as SFTrips} from '../data/sf.trips';
 export {default as iconAtlas} from '../data/icon-atlas.json';
 export {default as s2cells} from '../data/sf.s2cells.json';
 export {choropleths};
@@ -107,6 +108,63 @@ export const zigzag = [
       [positionOrigin[0] - 0.005, positionOrigin[1] - 0.005]
     ]
   }
+];
+
+export const zigzag3D = [
+  {
+    // Big zigzag - 3D
+    path: new Array(12)
+      .fill(0)
+      .map((d, i) => [
+        positionOrigin[0] - i * i * 0.001 * (i % 2 ? 1 : -1),
+        positionOrigin[1] + (Math.cos(i * Math.PI) * 0.2) / (i + 4),
+        i * 1000
+      ])
+  },
+  {
+    // Tiny zigzag
+    path: new Array(12)
+      .fill(0)
+      .map((d, i) => [
+        positionOrigin[0] - 0.001 - i * i * 1e-5,
+        positionOrigin[1] + (Math.cos(i * Math.PI) * 2e-3) / (i + 4),
+        i * 10
+      ])
+  }
+];
+
+export const greatCircles = [
+  {source: [120, 0], target: [-60, 0]},
+  {source: [120, 10], target: [-60, -10]},
+  {source: [120, -10], target: [-60, 10]},
+  {source: [-120, 0], target: [60, 0]},
+  {source: [-120, 10], target: [60, -10]},
+  {source: [-120, -10], target: [60, 10]},
+  {source: [-40, 10], target: [-140, 10]},
+  {source: [-40, 20], target: [-140, 20]},
+  {source: [-40, 30], target: [-140, 30]},
+  {source: [-40, 40], target: [-140, 40]},
+  {source: [-40, 50], target: [-140, 50]},
+  {source: [-40, 60], target: [-140, 60]},
+  {source: [-40, 70], target: [-140, 70]},
+  {source: [10, 80], target: [20, 30]},
+  {source: [20, 80], target: [40, 30]},
+  {source: [30, 80], target: [60, 30]},
+  {source: [40, 80], target: [80, 30]},
+  {source: [50, 80], target: [100, 30]},
+  {source: [60, 80], target: [120, 30]},
+  {source: [70, 80], target: [140, 30]},
+  {source: [-40, -10], target: [-140, -10]},
+  {source: [-40, -20], target: [-140, -30]},
+  {source: [-40, -30], target: [-140, -60]},
+  {source: [-40, -40], target: [-140, -80]},
+  {source: [20, -30], target: [20, -80]},
+  {source: [40, -30], target: [40, -80]},
+  {source: [60, -30], target: [60, -80]},
+  {source: [80, -30], target: [80, -80]},
+  {source: [100, -30], target: [100, -80]},
+  {source: [120, -30], target: [120, -80]},
+  {source: [140, -30], target: [140, -80]}
 ];
 
 // Extract simple/complex polygons arrays from geojson

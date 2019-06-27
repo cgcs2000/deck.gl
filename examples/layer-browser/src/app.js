@@ -1,9 +1,18 @@
 /* global window */
 
 // deck.gl ES6 components
-import {COORDINATE_SYSTEM, View, MapView, FirstPersonView, OrbitView, MapController} from 'deck.gl';
+import {
+  COORDINATE_SYSTEM,
+  View,
+  MapView,
+  FirstPersonView,
+  OrbitView,
+  MapController,
+  AmbientLight,
+  DirectionalLight,
+  LightingEffect
+} from '@deck.gl/core';
 import {_OrbitController as OrbitController} from '@deck.gl/core';
-import {_ReflectionEffect as ReflectionEffect} from '@deck.gl/core';
 
 // deck.gl react components
 import DeckGL from '@deck.gl/react';
@@ -11,7 +20,7 @@ import DeckGL from '@deck.gl/react';
 import React, {PureComponent} from 'react';
 import autobind from 'react-autobind';
 
-import {StaticMap} from 'react-map-gl';
+import {StaticMap, _MapContext as MapContext, NavigationControl} from 'react-map-gl';
 
 import {Matrix4} from 'math.gl';
 
@@ -20,7 +29,6 @@ import LayerSelector from './components/layer-selector';
 import LayerControls from './components/layer-controls';
 
 import LAYER_CATEGORIES from './examples';
-import 'luma.gl/debug';
 
 /* eslint-disable no-process-env */
 const MapboxAccessToken =
@@ -36,6 +44,28 @@ const VIEW_LABEL_STYLES = {
   backgroundColor: '#282727',
   color: '#FFFFFF'
 };
+
+const NAVIGATION_CONTROL_STYLES = {
+  margin: 10,
+  position: 'absolute',
+  zIndex: 1
+};
+
+const AMBIENT_LIGHT = new AmbientLight({
+  color: [255, 255, 255],
+  intensity: 1.2
+});
+
+const DIRECTIONAL_LIGHT = new DirectionalLight({
+  color: [255, 255, 255],
+  intensity: 3.0,
+  direction: [-3, -9, -1]
+});
+
+const GLOBAL_LIGHTING = new LightingEffect({
+  AMBIENT_LIGHT,
+  DIRECTIONAL_LIGHT
+});
 
 const ViewportLabel = props => (
   <div style={{position: 'absolute'}}>
@@ -93,8 +123,6 @@ export default class App extends PureComponent {
 
       enableDepthPickOnClick: false
     };
-
-    this._effects = [new ReflectionEffect()];
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -164,10 +192,15 @@ export default class App extends PureComponent {
   }
 
   _renderExampleLayer(example, settings, index) {
-    const {layer: Layer, props, getData} = example;
+    const {layer: Layer, props, getData, initialize, isInitialized} = example;
 
     if (getData && !props.data) {
       props.data = getData();
+    }
+
+    if (initialize && !isInitialized) {
+      initialize();
+      example.isInitialized = true;
     }
 
     const layerProps = Object.assign({}, props, settings);
@@ -176,15 +209,6 @@ export default class App extends PureComponent {
     });
 
     return new Layer(layerProps);
-  }
-
-  // Flatten layer props
-  _getLayerSettings(props) {
-    const settings = {};
-    for (const key in props) {
-      settings[key] = props[key];
-    }
-    return settings;
   }
 
   /* eslint-disable max-depth */
@@ -202,7 +226,7 @@ export default class App extends PureComponent {
           const layer = this._renderExampleLayer(example, settings, index++);
 
           if (typeof settings !== 'object') {
-            activeExamples[exampleName] = this._getLayerSettings(layer.props);
+            activeExamples[exampleName] = LayerControls.getSettings(layer.props);
           }
 
           layers.push(layer);
@@ -287,13 +311,14 @@ export default class App extends PureComponent {
           views={views}
           viewState={infovis ? orbitViewState : {...mapViewState, position: [0, 0, 50]}}
           onViewStateChange={this._onViewStateChange}
-          effects={effects ? this._effects : []}
+          effects={effects ? [...this._effects, GLOBAL_LIGHTING] : [GLOBAL_LIGHTING]}
           pickingRadius={pickingRadius}
-          onLayerHover={this._onHover}
-          onLayerClick={this._onClick}
+          onHover={this._onHover}
+          onClick={this._onClick}
           useDevicePixels={useDevicePixels}
           debug={true}
           drawPickingColors={drawPickingColors}
+          ContextProvider={MapContext.Provider}
         >
           <View id="basemap">
             <StaticMap
@@ -311,6 +336,10 @@ export default class App extends PureComponent {
           <View id="infovis">
             <ViewportLabel>Orbit View (PlotLayer only, No Navigation)</ViewportLabel>
           </View>
+
+          <div style={NAVIGATION_CONTROL_STYLES}>
+            <NavigationControl />
+          </div>
         </DeckGL>
       </div>
     );

@@ -20,15 +20,20 @@
 
 import './imports-spec';
 import './core';
+
 import './layers';
+import './aggregation-layers';
+import './geo-layers';
+
 import './json';
+import './react';
 
 // TODO - Tests currently only work in browser
 if (typeof document !== 'undefined') {
-  require('./experimental-layers');
-  require('./react');
-  require('./lite');
-  require('./core/experimental/utils/gpu-grid-aggregator.spec');
-  require('./core/experimental/utils/grid-aggregation-utils.spec');
+  require('./react/deckgl.spec');
+
+  require('./main/bundle');
+  require('./aggregation-layers/utils/gpu-grid-aggregator.spec');
+  require('./aggregation-layers/utils/grid-aggregation-utils.spec');
   require('./core/lib/pick-layers.spec');
 }

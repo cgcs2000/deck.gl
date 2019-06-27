@@ -1,9 +1,9 @@
 /* eslint-disable max-statements */
-import AttributeTransitionManager from '@deck.gl/core/lib/attribute-transition-manager';
-import Attribute from '@deck.gl/core/lib/attribute';
+import AttributeTransitionManager from '@cgcs2000/deck.gl.core/lib/attribute-transition-manager';
+import Attribute from '@cgcs2000/deck.gl.core/lib/attribute';
 import test from 'tape-catch';
-import {isWebGL2} from 'luma.gl';
-import {gl} from '@deck.gl/test-utils';
+import {isWebGL2} from '@luma.gl/core';
+import {gl} from '@cgcs2000/deck.gl.test-utils';
 
 const TEST_ATTRIBUTES = {
   indices: new Attribute(gl, {

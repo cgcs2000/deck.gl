@@ -19,12 +19,8 @@
 // THE SOFTWARE.
 import {experimental} from '@cgcs2000/deck.gl.core';
 const {Tesselator} = experimental;
-import {fp64 as fp64Module} from 'luma.gl';
+import {fp64 as fp64Module} from '@luma.gl/core';
 const {fp64LowPart} = fp64Module;
-
-// colorArray is used to copy over color values if the passed color is an RGB
-// array instead of RGBA
-const colorArray = [0, 0, 0, 255];
 
 // This class is set up to allow querying one attribute at a time
 // the way the AttributeManager expects it
@@ -38,56 +34,17 @@ export default class PathTesselator extends Tesselator {
       attributes: {
         startPositions: {size: 3},
         endPositions: {size: 3},
-        leftDeltas: {size: 3},
-        rightDeltas: {size: 3},
-        startEndPositions64XyLow: {size: 4, fp64Only: true}
+        leftPositions: {size: 3},
+        rightPositions: {size: 3},
+        startEndPositions64XyLow: {size: 4, fp64Only: true},
+        neighborPositions64XyLow: {size: 4, fp64Only: true}
       }
     });
   }
 
   /* Getters */
-  get(attributeName, target, accessor) {
-    if (this.attributes[attributeName]) {
-      return this.attributes[attributeName];
-    }
-
-    switch (attributeName) {
-      case 'strokeWidths':
-        return this._updateAttribute({
-          target,
-          size: 1,
-          getValue: object => [accessor(object)]
-        });
-
-      case 'dashArrays':
-        return this._updateAttribute({target, size: 2, getValue: accessor});
-
-      case 'colors':
-        return this._updateAttribute({
-          target,
-          size: 4,
-          getValue: object => {
-            const color = accessor(object);
-            if (color.length === 4) {
-              return color;
-            }
-            colorArray[0] = color[0];
-            colorArray[1] = color[1];
-            colorArray[2] = color[2];
-            return colorArray;
-          }
-        });
-
-      case 'pickingColors':
-        return this._updateAttribute({
-          target,
-          size: 3,
-          getValue: (object, index) => accessor(index)
-        });
-
-      default:
-        return null;
-    }
+  get(attributeName) {
+    return this.attributes[attributeName];
   }
 
   /* Implement base Tesselator interface */
@@ -98,7 +55,14 @@ export default class PathTesselator extends Tesselator {
   /* eslint-disable max-statements, complexity */
   updateGeometryAttributes(path, context) {
     const {
-      attributes: {startPositions, endPositions, leftDeltas, rightDeltas, startEndPositions64XyLow},
+      attributes: {
+        startPositions,
+        endPositions,
+        leftPositions,
+        rightPositions,
+        startEndPositions64XyLow,
+        neighborPositions64XyLow
+      },
       fp64
     } = this;
 
@@ -129,19 +93,24 @@ export default class PathTesselator extends Tesselator {
       endPositions[i * 3 + 1] = endPoint[1];
       endPositions[i * 3 + 2] = endPoint[2] || 0;
 
-      leftDeltas[i * 3] = startPoint[0] - prevPoint[0];
-      leftDeltas[i * 3 + 1] = startPoint[1] - prevPoint[1];
-      leftDeltas[i * 3 + 2] = startPoint[2] - prevPoint[2] || 0;
+      leftPositions[i * 3] = prevPoint[0];
+      leftPositions[i * 3 + 1] = prevPoint[1];
+      leftPositions[i * 3 + 2] = prevPoint[2] || 0;
 
-      rightDeltas[i * 3] = nextPoint[0] - endPoint[0];
-      rightDeltas[i * 3 + 1] = nextPoint[1] - endPoint[1];
-      rightDeltas[i * 3 + 2] = nextPoint[2] - endPoint[2] || 0;
+      rightPositions[i * 3] = nextPoint[0];
+      rightPositions[i * 3 + 1] = nextPoint[1];
+      rightPositions[i * 3 + 2] = nextPoint[2] || 0;
 
       if (fp64) {
         startEndPositions64XyLow[i * 4] = fp64LowPart(startPoint[0]);
         startEndPositions64XyLow[i * 4 + 1] = fp64LowPart(startPoint[1]);
         startEndPositions64XyLow[i * 4 + 2] = fp64LowPart(endPoint[0]);
         startEndPositions64XyLow[i * 4 + 3] = fp64LowPart(endPoint[1]);
+
+        neighborPositions64XyLow[i * 4] = fp64LowPart(prevPoint[0]);
+        neighborPositions64XyLow[i * 4 + 1] = fp64LowPart(prevPoint[1]);
+        neighborPositions64XyLow[i * 4 + 2] = fp64LowPart(nextPoint[0]);
+        neighborPositions64XyLow[i * 4 + 3] = fp64LowPart(nextPoint[1]);
       }
 
       prevPoint = startPoint;

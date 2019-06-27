@@ -1,5 +1,5 @@
 import test from 'tape-catch';
-import ViewManager from '@deck.gl/core/lib/view-manager';
+import ViewManager from '@cgcs2000/deck.gl.core/lib/view-manager';
 import {MapView, Viewport} from 'deck.gl';
 
 const INITIAL_VIEW_STATE = {latitude: 0, longitude: 0, zoom: 1};
@@ -52,10 +52,10 @@ test('ViewManager#needsRedraw', t => {
 
   viewManager.getViewports();
 
-  let redrawReason = viewManager.needsRedraw({clearRedrawFlags: false});
+  let redrawReason = viewManager.needsRedraw();
   t.equals(typeof redrawReason, 'string', 'Viewport needs redrawing');
 
-  redrawReason = viewManager.needsRedraw();
+  redrawReason = viewManager.needsRedraw({clearRedrawFlags: true});
   t.equals(typeof redrawReason, 'string', 'Viewport still needs redrawing');
 
   redrawReason = viewManager.needsRedraw();

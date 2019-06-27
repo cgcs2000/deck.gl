@@ -1,4 +1,4 @@
-import {ScatterplotLayer, ArcLayer} from '@deck.gl/layers';
+import {ScatterplotLayer, ArcLayer} from '@cgcs2000/deck.gl.layers';
 
 export const mapboxBuildingLayer = {
   id: '3d-buildings',
@@ -22,7 +22,7 @@ export const deckPoiLayer = {
   autoHighlight: true,
   radiusMinPixels: 0.25,
   getPosition: d => d.coordinates,
-  getColor: [255, 180],
+  getFillColor: [255, 180],
   getRadius: 10
 };
 
@@ -44,5 +44,5 @@ export const deckRouteLayer = {
   getTargetPosition: d => d[1],
   getSourceColor: [0, 128, 255],
   getTargetColor: [255, 0, 128],
-  getStrokeWidth: 4
+  getWidth: 4
 };

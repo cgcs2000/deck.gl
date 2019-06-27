@@ -1,6 +1,6 @@
 import test from 'tape-catch';
-import ComponentState from '@deck.gl/core/lifecycle/component-state';
-import Component from '@deck.gl/core/lifecycle/component';
+import ComponentState from '@cgcs2000/deck.gl.core/lifecycle/component-state';
+import Component from '@cgcs2000/deck.gl.core/lifecycle/component';
 
 /* global fetch */
 const EMPTY_ARRAY = Object.freeze([]);

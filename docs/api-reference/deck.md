@@ -125,6 +125,10 @@ new Deck({
 
 Default `null`.
 
+#### `effects` (Array)
+
+The array of effects to be rendered.A lighting effect will be added if an empty array is supplied.Refer to effect's documentation to see details
+* [LightingEffect](/docs/effects/lighting-effect.md)
 
 ### Configuration Properties
 
@@ -135,6 +139,14 @@ Canvas ID to allow style customization in CSS.
 ##### `style` (Object, optional)
 
 Css styles for the deckgl-canvas.
+
+##### `touchAction` (String, optional)
+
+Allow browser default touch actions. See [hammer.js doc](http://hammerjs.github.io/touch-action/).
+
+Default: `none`.
+
+By default, the deck canvas captures all touch interactions. This prop is useful for mobile applications to unblock default scrolling behavior. For example, use the combination `controller: {dragPan: false}` and `touchAction: 'pan-y'` to allow vertical page scroll when dragging over the canvas.
 
 ##### `pickingRadius` (Number, optional)
 
@@ -205,31 +217,29 @@ The `onViewStateChange` callback is fired when the user has interacted with the 
 
 `onViewStateChange({viewState})`
 
-* `viewState` - An updated [view state](/docs/developer-guide/view-state.md) object containing parameters such as `longitude`, `latitude`, `zoom` etc.
+* `viewState` - An updated [view state](/docs/developer-guide/views.md) object containing parameters such as `longitude`, `latitude`, `zoom` etc.
 
 Returns:
 
 * The application can return an updated view state. If a view state is returned, it will be used instead of the passed in `viewState` to update the application's internal view state (see `initialViewState`).
 
-##### `onLayerHover` (Function, optional)
+##### `onHover` (Function, optional)
 
-Callback - called when the object under the pointer changes.
+Callback - called when the pointer moves over the canvas.
 
 Callback Arguments:
 
-* `info` - the [`info`](/docs/get-started/interactivity.md#the-picking-info-object) object for the topmost picked layer at the coordinate, null when no object is picked.
-* `pickedInfos` - an array of info objects for all pickable layers that are affected.
-* `event` - the original [MouseEvent](https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent) object
+* `info` - the [picking info](/docs/developer-guide/interactivity.md#the-picking-info-object) describing the object being dragged.
+* `event` - the original gesture event
 
-##### `onLayerClick` (Function, optional)
+##### `onClick` (Function, optional)
 
 Callback - called when clicking on the canvas.
 
 Callback Arguments:
 
-* `info` - the [`info`](/docs/get-started/interactivity.md#the-picking-info-object) object for the topmost picked layer at the coordinate, null when no object is picked.
-* `pickedInfos` - an array of info objects for all pickable layers that are affected.
-* `event` - the original [MouseEvent](https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent) object
+* `info` - the [picking info](/docs/developer-guide/interactivity.md#the-picking-info-object) describing the object being dragged.
+* `event` - the original gesture event
 
 ##### `onDragStart` (Function, optional)
 
@@ -237,7 +247,7 @@ Callback - called when the user starts dragging on the canvas.
 
 Callback Arguments:
 
-* `info` - the [picking info](/docs/get-started/interactivity.md#the-picking-info-object) describing the object being dragged.
+* `info` - the [picking info](/docs/developer-guide/interactivity.md#the-picking-info-object) describing the object being dragged.
 * `event` - the original gesture event
 
 ##### `onDrag` (Function, optional)
@@ -246,7 +256,7 @@ Callback - called when dragging the canvas.
 
 Callback Arguments:
 
-* `info` - the [picking info](/docs/get-started/interactivity.md#the-picking-info-object) describing the object being dragged.
+* `info` - the [picking info](/docs/developer-guide/interactivity.md#the-picking-info-object) describing the object being dragged.
 * `event` - the original gesture event
 
 ##### `onDragEnd` (Function, optional)
@@ -255,7 +265,7 @@ Callback - called when the user releases from dragging the canvas.
 
 Callback Arguments:
 
-* `info` - the [picking info](/docs/get-started/interactivity.md#the-picking-info-object) describing the object being dragged.
+* `info` - the [picking info](/docs/developer-guide/interactivity.md#the-picking-info-object) describing the object being dragged.
 * `event` - the original gesture event
 
 
@@ -295,6 +305,18 @@ deck.setProps({...});
 
 See the Properties section on this page for more detail on which props can be set.
 
+##### `redraw`
+
+Attempt to draw immediately, rather than waiting for the next draw cycle. By default, deck flushes all changes to the canvas on each animation frame. This behavior might cause the deck canvas to fall out of sync with other components if synchronous updates are required.
+
+Redrawing frequently outside of rAF may cause performance problems. Only use this method if the render cycle must be managed manually.
+
+```js
+deck.redraw(force);
+```
+
+* `force` (Boolean) - if `false`, only redraw if necessary (e.g. changes have been made to views or layers). If `true`, skip the check. Default `false`.
+
 
 ##### `pickObject`
 
@@ -311,7 +333,7 @@ deck.pickObject({x, y, radius, layerIds})
 
 Returns:
 
-* a single [`info`](/docs/get-started/interactivity.md#the-picking-info-object) object, or `null` if nothing is found.
+* a single [`info`](/docs/developer-guide/interactivity.md#the-picking-info-object) object, or `null` if nothing is found.
 
 
 ##### `pickMultipleObjects`
@@ -330,7 +352,7 @@ deck.pickMultipleObjects({x, y, radius, layerIds, depth})
 
 Returns:
 
-* An array of [`info`](/docs/get-started/interactivity.md#the-picking-info-object) objects. The array will be empty if no object was picked.
+* An array of [`info`](/docs/developer-guide/interactivity.md#the-picking-info-object) objects. The array will be empty if no object was picked.
 
 Notes:
 
@@ -355,12 +377,33 @@ Parameters:
 
 Returns:
 
-* an array of unique [`info`](/docs/get-started/interactivity.md#the-picking-info-object) objects
+* an array of unique [`info`](/docs/developer-guide/interactivity.md#the-picking-info-object) objects
 
 Notes:
 
 * The query methods are designed to quickly find objects by utilizing the picking buffer.
 * The query methods offer more flexibility for developers to handle events compared to the built-in hover and click callbacks.
+
+
+## Member Variables
+
+#### metrics
+
+A map of various performance statistics for the last 60 frames of rendering. Metrics gathered in deck.gl are the following:
+- 'fps': average number of frames rendered per second
+- 'updateAttributesTime': time spent updating layer attributes
+- 'setPropsTime': time spent setting deck properties
+- 'framesRedrawn': number of times the scene was rendered
+- 'pickTime': total time spent on picking operations
+- 'pickCount': number of times a pick operation was performed
+- 'gpuTime': total time spent on GPU processing
+- 'gpuTimePerFrame': average time spent on GPU processing per frame
+- 'cpuTime': total time spent on CPU processing
+- 'cpuTimePerFrame': average time spent on CPU processing per frame
+- 'bufferMemory': total GPU memory allocated for buffers
+- 'textureMemory': total GPU memory allocated for textures
+- 'renderbufferMemory': total GPU memory allocated for renderbuffers
+- 'gpuMemory': total allocated GPU memory
 
 
 ## Remarks
@@ -370,4 +413,4 @@ Notes:
 
 ## Source
 
-[modules/core/src/core/lib/deck.js](https://github.com/uber/deck.gl/tree/6.4-release/modules/core/src/lib/deck.js)
+[modules/core/src/lib/deck.js](https://github.com/uber/deck.gl/tree/7.1-release/modules/core/src/lib/deck.js)

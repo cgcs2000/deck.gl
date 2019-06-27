@@ -20,16 +20,16 @@
 
 import test from 'tape-catch';
 import assert from 'assert';
-import GL from 'luma.gl/constants';
+import GL from '@luma.gl/constants';
 
 // import {COORDINATE_SYSTEM, Viewport, WebMercatorViewport} from 'deck.gl';
 import {COORDINATE_SYSTEM, WebMercatorViewport} from 'deck.gl';
 import project32 from '../../../../../modules/core/src/shaderlib/project32/project32';
-import {project, project64} from '@deck.gl/core/shaderlib';
+import {project, project64} from '@cgcs2000/deck.gl.core/shaderlib';
 // import {Matrix4, config} from 'math.gl';
 import {config} from 'math.gl';
-import {gl} from '@deck.gl/test-utils';
-import {Transform, Buffer, fp64} from 'luma.gl';
+import {gl} from '@cgcs2000/deck.gl.test-utils';
+import {Transform, Buffer, fp64} from '@luma.gl/core';
 const {fp64LowPart} = fp64;
 import {getPixelOffset, clipspaceToScreen, runOnGPU, verifyResult} from './project-glsl-test-utils';
 // import {clipspaceToScreen, runOnGPU, verifyResult} from './project-glsl-test-utils';
@@ -218,8 +218,8 @@ const TEST_CASES = [
           return worldPosition;
         },
         output: getPixelOffset(
-          TEST_VIEWPORT.projectFlat([-122, 38]),
-          TEST_VIEWPORT.projectFlat([-122.05, 37.92])
+          TEST_VIEWPORT.projectPosition([-122, 38, 0]),
+          TEST_VIEWPORT.projectPosition([-122.05, 37.92, 0])
         ),
         precision: PIXEL_TOLERANCE,
         gpu64BitPrecision: 1e-7,

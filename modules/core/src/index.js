@@ -28,6 +28,17 @@ import './shaderlib';
 // Core Library
 export {COORDINATE_SYSTEM} from './lib/constants';
 
+// Effects
+export {default as LightingEffect} from './effects/lighting/lighting-effect';
+export {default as PointLight} from './effects/lighting/point-light';
+export {default as DirectionalLight} from './effects/lighting/directional-light';
+export {default as _CameraLight} from './effects/lighting/camera-light';
+export {default as _SunLight} from './effects/lighting/sun-light';
+export {default as PostProcessEffect} from './effects/post-process-effect';
+
+// Passes
+export {default as _LayersPass} from './passes/layers-pass';
+
 // Experimental Pure JS (non-React) bindings
 export {default as Deck} from './lib/deck';
 
@@ -35,6 +46,7 @@ export {default as LayerManager} from './lib/layer-manager';
 export {default as AttributeManager} from './lib/attribute-manager';
 export {default as Layer} from './lib/layer';
 export {default as CompositeLayer} from './lib/composite-layer';
+export {default as DeckRenderer} from './lib/deck-renderer';
 
 // Viewports
 export {default as Viewport} from './viewports/viewport';
@@ -43,7 +55,6 @@ export {default as WebMercatorViewport} from './viewports/web-mercator-viewport'
 // Shader modules
 export {default as project} from './shaderlib/project/project';
 export {default as project64} from './shaderlib/project64/project64';
-export {default as lighting} from './shaderlib/lighting/lighting';
 
 export {default as View} from './views/view';
 export {default as MapView} from './views/map-view';
@@ -64,9 +75,7 @@ export {default as _OrthographicController} from './controllers/orthographic-con
 // EXPERIMENTAL EXPORTS
 
 // Experimental Effects (non-React) bindings
-export {default as _EffectManager} from './experimental/lib/effect-manager';
-export {default as _Effect} from './experimental/lib/effect';
-export {default as _ReflectionEffect} from './experimental/reflection-effect/reflection-effect';
+export {default as Effect} from './lib/effect';
 
 // Eperimental Transitions
 export {TRANSITION_EVENTS} from './controllers/transition-manager';
@@ -77,31 +86,20 @@ export {default as FlyToInterpolator} from './transitions/viewport-fly-to-interp
 export {default as log} from './utils/log';
 import {flattenVertices, fillArray} from './utils/flatten'; // Export? move to luma.gl or math.gl?
 
-import {default as BinSorter} from './utils/bin-sorter';
-import {default as Tesselator} from './utils/tesselator'; // Export? move to luma.gl or math.gl?
-import {defaultColorRange} from './utils/color-utils';
-import {linearScale, getLinearScale, quantizeScale, getQuantizeScale} from './utils/scale-utils';
+export {createIterable} from './utils/iterable-utils';
+import Tesselator from './utils/tesselator'; // Export? move to luma.gl or math.gl?
+import {count} from './utils/count';
+import memoize from './utils/memoize';
 
-export {
-  default as _GPUGridAggregator
-} from './experimental/utils/gpu-grid-aggregation/gpu-grid-aggregator';
-export {
-  AGGREGATION_OPERATION
-} from './experimental/utils/gpu-grid-aggregation/gpu-grid-aggregator-constants';
-export {
-  pointToDensityGridData as _pointToDensityGridData
-} from './experimental/utils/gpu-grid-aggregation/grid-aggregation-utils';
+// lighting
+export {AmbientLight} from '@luma.gl/core';
 
 // Exports for layers
 // Experimental Features may change in minor version bumps, use at your own risk)
 export const experimental = {
-  BinSorter,
   Tesselator,
-  linearScale,
-  getLinearScale,
-  quantizeScale,
-  getQuantizeScale,
-  defaultColorRange,
   flattenVertices,
-  fillArray
+  fillArray,
+  count,
+  memoize
 };

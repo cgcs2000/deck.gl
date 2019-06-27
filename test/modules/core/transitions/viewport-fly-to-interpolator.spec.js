@@ -1,6 +1,6 @@
 import test from 'tape-catch';
-import FlyToInterpolator from '@deck.gl/core/transitions/viewport-fly-to-interpolator';
-import {toLowPrecision} from '@deck.gl/test-utils';
+import FlyToInterpolator from '@cgcs2000/deck.gl.core/transitions/viewport-fly-to-interpolator';
+import {toLowPrecision} from '@cgcs2000/deck.gl.test-utils';
 
 /* eslint-disable max-len */
 const TEST_CASES = [

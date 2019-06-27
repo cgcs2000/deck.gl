@@ -1,12 +1,12 @@
 import React, {Component} from 'react';
 import DeckGL from 'deck.gl';
+import {StaticMap} from 'react-map-gl';
 import autobind from 'autobind-decorator';
-import {setParameters} from 'luma.gl';
 
 import {MAPBOX_STYLES} from '../../constants/defaults';
 import {getLayerParams} from '../../utils/layer-params';
 
-const defaultViewport = {
+const INITIAL_VIEW_STATE = {
   longitude: -122.4,
   latitude: 37.74,
   zoom: 11,
@@ -16,9 +16,8 @@ const defaultViewport = {
 };
 
 export default function createLayerDemoClass(settings) {
-
   const renderLayer = (data, params, extraProps = {}) => {
-    if (!data) {
+    if (!data && !settings.allowMissingData) {
       return null;
     }
 
@@ -34,28 +33,30 @@ export default function createLayerDemoClass(settings) {
   };
 
   class DemoClass extends Component {
-
     static get data() {
       return {
         url: settings.dataUrl
       };
     }
 
-    static viewport = defaultViewport;
-
-    static mapStyle = MAPBOX_STYLES.LIGHT;
-
     static get parameters() {
-      return getLayerParams(renderLayer([]));
+      return getLayerParams(renderLayer([]), settings.propParameters);
     }
 
     static renderInfo() {
       const name = settings.Layer.layerName;
       return (
         <div>
-          <h3>{ name }</h3>
-          <p>Explore {name}'s API <br/>
-            <a href={settings.dataUrl} target="_new">Sample data</a></p>
+          <h3>{name}</h3>
+          <p>
+            Explore {name}
+            's API <br />
+            {settings.dataUrl && (
+              <a href={settings.dataUrl} target="_new">
+                Sample data
+              </a>
+            )}
+          </p>
         </div>
       );
     }
@@ -67,7 +68,8 @@ export default function createLayerDemoClass(settings) {
       };
     }
 
-    @autobind _onHover(info) {
+    @autobind
+    _onHover(info) {
       this.setState({hoveredItem: info});
     }
 
@@ -76,19 +78,24 @@ export default function createLayerDemoClass(settings) {
       if (hoveredItem && hoveredItem.index >= 0) {
         const {formatTooltip} = settings;
         const info = formatTooltip ? formatTooltip(hoveredItem.object) : hoveredItem.index;
-        return info && (
-          <div className="tooltip"
-            style={{left: hoveredItem.x, top: hoveredItem.y}}>
-            { info.toString().split('\n')
-                .map((str, i) => <p key={i}>{str}</p>) }
-          </div>
+        return (
+          info && (
+            <div className="tooltip" style={{left: hoveredItem.x, top: hoveredItem.y}}>
+              {info
+                .toString()
+                .split('\n')
+                .map((str, i) => (
+                  <p key={i}>{str}</p>
+                ))}
+            </div>
+          )
         );
       }
       return null;
     }
 
     render() {
-      const {viewState, params, data} = this.props;
+      const {params, data} = this.props;
       const layers = [
         renderLayer(data, params, {
           onHover: this._onHover
@@ -97,8 +104,16 @@ export default function createLayerDemoClass(settings) {
 
       return (
         <div>
-          <DeckGL pickingRadius={5} viewState={viewState} layers={ layers } />
-          { this._renderTooltip() }
+          <DeckGL pickingRadius={5}
+            initialViewState={INITIAL_VIEW_STATE}
+            controller={true}
+            layers={layers} >
+            <StaticMap reuseMaps
+              mapStyle={MAPBOX_STYLES.LIGHT}
+              preventStyleDiffing={true}
+              mapboxApiAccessToken={process.env.MapboxAccessToken} />
+          </DeckGL>
+          {this._renderTooltip()}
         </div>
       );
     }

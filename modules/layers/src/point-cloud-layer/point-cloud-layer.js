@@ -18,9 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import {Layer} from '@cgcs2000/deck.gl.core';
-import GL from 'luma.gl/constants';
-import {Model, Geometry, fp64} from 'luma.gl';
+import {Layer, createIterable} from '@cgcs2000/deck.gl.core';
+import GL from '@luma.gl/constants';
+import {Model, Geometry, fp64, PhongMaterial} from '@luma.gl/core';
 const {fp64LowPart} = fp64;
 
 import vs from './point-cloud-layer-vertex.glsl';
@@ -28,22 +28,27 @@ import fs from './point-cloud-layer-fragment.glsl';
 
 const DEFAULT_COLOR = [0, 0, 0, 255];
 const DEFAULT_NORMAL = [0, 0, 1];
+const defaultMaterial = new PhongMaterial();
 
 const defaultProps = {
-  radiusPixels: {type: 'number', min: 0, value: 10}, //  point radius in pixels
+  sizeUnits: 'pixels',
+  pointSize: {type: 'number', min: 0, value: 10}, //  point radius in pixels
   fp64: false,
 
   getPosition: {type: 'accessor', value: x => x.position},
   getNormal: {type: 'accessor', value: DEFAULT_NORMAL},
   getColor: {type: 'accessor', value: DEFAULT_COLOR},
 
-  lightSettings: {}
+  material: defaultMaterial,
+
+  // Depreated
+  radiusPixels: {deprecatedFor: 'pointSize'}
 };
 
 export default class PointCloudLayer extends Layer {
   getShaders(id) {
     const projectModule = this.use64bitProjection() ? 'project64' : 'project32';
-    return {vs, fs, modules: [projectModule, 'lighting', 'picking']};
+    return {vs, fs, modules: [projectModule, 'gouraud-lighting', 'picking']};
   }
 
   initializeState() {
@@ -89,12 +94,18 @@ export default class PointCloudLayer extends Layer {
   }
 
   draw({uniforms}) {
-    const {radiusPixels} = this.props;
-    this.state.model.render(
-      Object.assign({}, uniforms, {
-        radiusPixels
-      })
-    );
+    const {viewport} = this.context;
+    const {pointSize, sizeUnits} = this.props;
+
+    const sizeMultiplier = sizeUnits === 'meters' ? viewport.distanceScales.pixelsPerMeter[2] : 1;
+
+    this.state.model
+      .setUniforms(
+        Object.assign({}, uniforms, {
+          radiusPixels: pointSize * sizeMultiplier
+        })
+      )
+      .draw();
   }
 
   _getModel(gl) {
@@ -121,7 +132,7 @@ export default class PointCloudLayer extends Layer {
     );
   }
 
-  calculateInstancePositions64xyLow(attribute) {
+  calculateInstancePositions64xyLow(attribute, {startRow, endRow}) {
     const isFP64 = this.use64bitPositions();
     attribute.constant = !isFP64;
 
@@ -131,10 +142,12 @@ export default class PointCloudLayer extends Layer {
     }
 
     const {data, getPosition} = this.props;
-    const {value} = attribute;
-    let i = 0;
-    for (const point of data) {
-      const position = getPosition(point);
+    const {value, size} = attribute;
+    let i = startRow * size;
+    const {iterable, objectInfo} = createIterable(data, startRow, endRow);
+    for (const object of iterable) {
+      objectInfo.index++;
+      const position = getPosition(object, objectInfo);
       value[i++] = fp64LowPart(position[0]);
       value[i++] = fp64LowPart(position[1]);
     }

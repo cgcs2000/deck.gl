@@ -21,8 +21,8 @@
 import {Layer} from 'deck.gl';
 import {normalizeGeojson} from './geojson';
 import flatten from 'lodash.flattendeep';
-import GL from 'luma.gl/constants';
-import {Model, Geometry} from 'luma.gl';
+import GL from '@luma.gl/constants';
+import {Model, Geometry} from '@luma.gl/core';
 import earcut from 'earcut';
 import extrudePolyline from 'extrude-polyline';
 

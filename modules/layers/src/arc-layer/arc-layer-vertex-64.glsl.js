@@ -34,6 +34,8 @@ attribute float instanceWidths;
 uniform float numSegments;
 uniform float opacity;
 uniform float widthScale;
+uniform float widthMinPixels;
+uniform float widthMaxPixels;
 
 varying vec4 vColor;
 
@@ -51,14 +53,14 @@ vec2 paraboloid_fp64(vec2 source[2], vec2 target[2], float ratio) {
 
 // offset vector by strokeWidth pixels
 // offset_direction is -1 (left) or 1 (right)
-vec2 getExtrusionOffset(vec2 line_clipspace, float offset_direction) {
+vec2 getExtrusionOffset(vec2 line_clipspace, float offset_direction, float width) {
   // normalized direction of the line
   vec2 dir_screenspace = normalize(line_clipspace * project_uViewportSize);
   // rotate by 90 degrees
   dir_screenspace = vec2(-dir_screenspace.y, dir_screenspace.x);
 
-  vec2 offset_screenspace = dir_screenspace * offset_direction * instanceWidths * widthScale / 2.0;
-  vec2 offset_clipspace = project_pixel_to_clipspace(offset_screenspace).xy;
+  vec2 offset_screenspace = dir_screenspace * offset_direction * width / 2.0;
+  vec2 offset_clipspace = project_pixel_size_to_clipspace(offset_screenspace);
 
   return offset_clipspace;
 }
@@ -111,10 +113,17 @@ void main(void) {
   get_pos_fp64(projected_source_coord, projected_target_coord, nextSegmentRatio,
     next_pos_modelspace);
 
-  vec4 curr_pos_clipspace = project_to_clipspace_fp64(curr_pos_modelspace);
-  vec4 next_pos_clipspace = project_to_clipspace_fp64(next_pos_modelspace);
+  vec4 curr_pos_clipspace = project_common_position_to_clipspace_fp64(curr_pos_modelspace);
+  vec4 next_pos_clipspace = project_common_position_to_clipspace_fp64(next_pos_modelspace);
 
-  vec2 offset = getExtrusionOffset(next_pos_clipspace.xy - curr_pos_clipspace.xy, positions.y);
+  // Multiply out width and clamp to limits
+  // mercator pixels are interpreted as screen pixels
+  float widthPixels = clamp(
+    project_size_to_pixel(instanceWidths * widthScale),
+    widthMinPixels, widthMaxPixels
+  );
+
+  vec2 offset = getExtrusionOffset(next_pos_clipspace.xy - curr_pos_clipspace.xy, positions.y, widthPixels);
 
   gl_Position = curr_pos_clipspace + vec4(offset, 0.0, 0.0);
 

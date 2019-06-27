@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import {readableInteger} from '../../utils/format-utils';
 import {MAPBOX_STYLES, DATA_URI} from '../../constants/defaults';
-import {App, INITIAL_VIEW_STATE} from 'website-examples/line/app';
+import {App} from 'website-examples/line/app';
 
 const EMPTY_ARRAY = [];
 
@@ -20,8 +20,8 @@ export default class LineDemo extends Component {
 
   static get parameters() {
     return {
-      strokeWidth: {
-        displayName: 'Stroke Width',
+      width: {
+        displayName: 'Width',
         type: 'range',
         value: 3,
         step: 0.1,
@@ -29,10 +29,6 @@ export default class LineDemo extends Component {
         max: 10
       }
     };
-  }
-
-  static get viewport() {
-    return INITIAL_VIEW_STATE;
   }
 
   static get mapStyle() {
@@ -67,7 +63,7 @@ export default class LineDemo extends Component {
         {...otherProps}
         flightPaths={(data && data[0]) || EMPTY_ARRAY}
         airports={(data && data[1]) || EMPTY_ARRAY}
-        getStrokeWidth={params.strokeWidth.value}
+        getWidth={params.width.value}
       />
     );
   }

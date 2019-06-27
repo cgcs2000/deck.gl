@@ -17,7 +17,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-import {fillArray} from './flatten';
+import {createIterable} from './iterable-utils';
 
 class TypedArrayManager {
   constructor({overAlloc = 1} = {}) {
@@ -43,9 +43,6 @@ class TypedArrayManager {
   }
 
   _allocate(Type = Float32Array, size) {
-    if (Type === Uint16Array && size > 65535) {
-      throw new Error('Vertex count exceeds browser index limit');
-    }
     // TODO - check if available in pool
     return new Type(size);
   }
@@ -86,8 +83,8 @@ export default class Tesselator {
     this._rebuildGeometry();
   }
 
-  updatePartialGeometry({start, count, objects}) {
-    // TODO
+  updatePartialGeometry({startRow, endRow}) {
+    this._rebuildGeometry({startRow, endRow});
   }
 
   /* Subclass interface */
@@ -108,49 +105,53 @@ export default class Tesselator {
    * Visit all objects
    * `data` is expected to be an iterable consistent with the base Layer expectation
    */
-  _forEachGeometry(visitor) {
+  _forEachGeometry(visitor, startRow, endRow) {
     const {data, getGeometry} = this;
-    let dataIndex = 0;
-    for (const object of data) {
-      const geometry = getGeometry(object);
-      visitor(geometry, dataIndex++);
+    const {iterable, objectInfo} = createIterable(data, startRow, endRow);
+    for (const object of iterable) {
+      objectInfo.index++;
+      const geometry = getGeometry(object, objectInfo);
+      visitor(geometry, objectInfo.index);
     }
   }
 
-  _updateAttribute({target, size, getValue}) {
-    const {data, bufferLayout} = this;
-
-    let i = 0;
-    let dataIndex = 0;
-    for (const object of data) {
-      const value = getValue(object, dataIndex);
-      const numVertices = bufferLayout[dataIndex++];
-
-      fillArray({target, source: value, start: i, count: numVertices});
-      i += numVertices * size;
-    }
-    return target;
-  }
-
-  _rebuildGeometry() {
+  /* eslint-disable complexity,max-statements */
+  _rebuildGeometry(dataRange) {
     if (!this.data || !this.getGeometry) {
       return;
     }
 
+    let {indexLayout, bufferLayout} = this;
+
+    if (!dataRange) {
+      // Full update - regenerate buffer layout from scratch
+      indexLayout = [];
+      bufferLayout = [];
+    }
+
+    const {startRow = 0, endRow = Infinity} = dataRange || {};
+    this._forEachGeometry(
+      (geometry, dataIndex) => {
+        bufferLayout[dataIndex] = this.getGeometrySize(geometry);
+      },
+      startRow,
+      endRow
+    );
+
     // count instances
-    const indexLayout = [];
-    const bufferLayout = [];
     let instanceCount = 0;
-    this._forEachGeometry((geometry, dataIndex) => {
-      const count = this.getGeometrySize(geometry);
+    for (const count of bufferLayout) {
       instanceCount += count;
-      bufferLayout[dataIndex] = count;
-    });
+    }
 
     // allocate attributes
     const {attributes, _attributeDefs, typedArrayManager, fp64} = this;
     for (const name in _attributeDefs) {
       const def = _attributeDefs[name];
+      // If dataRange is supplied, this is a partial update.
+      // In case we need to reallocate the typed array, it will need the old values copied
+      // before performing partial update.
+      def.copy = Boolean(dataRange);
 
       // do not create fp64-only attributes unless in fp64 mode
       if (!def.fp64Only || fp64) {
@@ -166,15 +167,29 @@ export default class Tesselator {
       vertexStart: 0,
       indexStart: 0
     };
-    this._forEachGeometry((geometry, dataIndex) => {
-      const geometrySize = bufferLayout[dataIndex];
-      context.geometryIndex = dataIndex;
-      context.geometrySize = geometrySize;
-      this.updateGeometryAttributes(geometry, context);
-      context.vertexStart += geometrySize;
-      context.indexStart += indexLayout[dataIndex] || 0;
-    });
+    for (let i = 0; i < startRow; i++) {
+      context.vertexStart += bufferLayout[i];
+      context.indexStart += indexLayout[i] || 0;
+    }
 
-    this.vertexCount = context.indexStart;
+    this._forEachGeometry(
+      (geometry, dataIndex) => {
+        const geometrySize = bufferLayout[dataIndex];
+        context.geometryIndex = dataIndex;
+        context.geometrySize = geometrySize;
+        this.updateGeometryAttributes(geometry, context);
+        context.vertexStart += geometrySize;
+        context.indexStart += indexLayout[dataIndex] || 0;
+      },
+      startRow,
+      endRow
+    );
+
+    // count vertices
+    let vertexCount = context.indexStart;
+    for (let i = endRow; i < indexLayout.length; i++) {
+      vertexCount += indexLayout[i];
+    }
+    this.vertexCount = vertexCount;
   }
 }

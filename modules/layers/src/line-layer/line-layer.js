@@ -18,9 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import {Layer} from '@cgcs2000/deck.gl.core';
-import GL from 'luma.gl/constants';
-import {Model, Geometry, fp64} from 'luma.gl';
+import {Layer, createIterable} from '@cgcs2000/deck.gl.core';
+import GL from '@luma.gl/constants';
+import {Model, Geometry, fp64} from '@luma.gl/core';
 const {fp64LowPart} = fp64;
 
 import vs from './line-layer-vertex.glsl';
@@ -34,10 +34,15 @@ const defaultProps = {
   getSourcePosition: {type: 'accessor', value: x => x.sourcePosition},
   getTargetPosition: {type: 'accessor', value: x => x.targetPosition},
   getColor: {type: 'accessor', value: DEFAULT_COLOR},
-  getStrokeWidth: {type: 'accessor', value: 1},
+  getWidth: {type: 'accessor', value: 1},
 
-  // deprecated
-  strokeWidth: {deprecatedFor: 'getStrokeWidth'}
+  widthUnits: 'pixels',
+  widthScale: {type: 'number', value: 1, min: 0},
+  widthMinPixels: {type: 'number', value: 0, min: 0},
+  widthMaxPixels: {type: 'number', value: Number.MAX_SAFE_INTEGER, min: 0},
+
+  // Deprecated, remove in v8
+  getStrokeWidth: {deprecatedFor: 'getWidth'}
 };
 
 export default class LineLayer extends Layer {
@@ -76,7 +81,7 @@ export default class LineLayer extends Layer {
       instanceWidths: {
         size: 1,
         transition: true,
-        accessor: 'getStrokeWidth',
+        accessor: 'getWidth',
         defaultValue: 1
       }
     });
@@ -94,6 +99,23 @@ export default class LineLayer extends Layer {
       this.setState({model: this._getModel(gl)});
       this.getAttributeManager().invalidateAll();
     }
+  }
+
+  draw({uniforms}) {
+    const {viewport} = this.context;
+    const {widthUnits, widthScale, widthMinPixels, widthMaxPixels} = this.props;
+
+    const widthMultiplier = widthUnits === 'pixels' ? viewport.distanceScales.metersPerPixel[2] : 1;
+
+    this.state.model
+      .setUniforms(
+        Object.assign({}, uniforms, {
+          widthScale: widthScale * widthMultiplier,
+          widthMinPixels,
+          widthMaxPixels
+        })
+      )
+      .draw();
   }
 
   _getModel(gl) {
@@ -122,7 +144,7 @@ export default class LineLayer extends Layer {
     );
   }
 
-  calculateInstanceSourceTargetPositions64xyLow(attribute) {
+  calculateInstanceSourceTargetPositions64xyLow(attribute, {startRow, endRow}) {
     const isFP64 = this.use64bitPositions();
     attribute.constant = !isFP64;
 
@@ -133,15 +155,16 @@ export default class LineLayer extends Layer {
 
     const {data, getSourcePosition, getTargetPosition} = this.props;
     const {value, size} = attribute;
-    let i = 0;
-    for (const object of data) {
-      const sourcePosition = getSourcePosition(object);
-      const targetPosition = getTargetPosition(object);
-      value[i + 0] = fp64LowPart(sourcePosition[0]);
-      value[i + 1] = fp64LowPart(sourcePosition[1]);
-      value[i + 2] = fp64LowPart(targetPosition[0]);
-      value[i + 3] = fp64LowPart(targetPosition[1]);
-      i += size;
+    let i = startRow * size;
+    const {iterable, objectInfo} = createIterable(data, startRow, endRow);
+    for (const object of iterable) {
+      objectInfo.index++;
+      const sourcePosition = getSourcePosition(object, objectInfo);
+      const targetPosition = getTargetPosition(object, objectInfo);
+      value[i++] = fp64LowPart(sourcePosition[0]);
+      value[i++] = fp64LowPart(sourcePosition[1]);
+      value[i++] = fp64LowPart(targetPosition[0]);
+      value[i++] = fp64LowPart(targetPosition[1]);
     }
   }
 }

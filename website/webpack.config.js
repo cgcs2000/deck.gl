@@ -3,30 +3,39 @@ const webpack = require('webpack');
 
 const rootDir = join(__dirname, '..');
 const libSources = join(rootDir, 'modules');
+const packageVersion = require('../lerna.json').version;
 
-const ALIASES = require('../aliases')('src');
+const ALIASES = require('ocular-dev-tools/config/ocular.config')({
+  aliasMode: 'src',
+  root: resolve(__dirname, '..')
+}).aliases;
 
 // Otherwise modules imported from outside this directory does not compile
 // Seems to be a Babel bug
 // https://github.com/babel/babel-loader/issues/149#issuecomment-191991686
 const BABEL_CONFIG = {
-  presets: [
-    'es2015',
-    'stage-2',
-    'react'
-  ].map(name => require.resolve(`babel-preset-${name}`)),
+  // https://babeljs.io/docs/en/babel-polyfill#size
+  presets: [['@babel/preset-env', {useBuiltIns: 'usage'}], '@babel/preset-react'],
   plugins: [
-    'transform-decorators-legacy'
-  ].map(name => require.resolve(`babel-plugin-${name}`))
+    ['@babel/plugin-proposal-decorators', {legacy: true}],
+    ['@babel/plugin-proposal-class-properties', {loose: true}]
+  ]
 };
 
 const COMMON_CONFIG = {
-
   entry: ['./src/main'],
+
+  devServer: {
+    contentBase: [resolve(__dirname, './src/static')]
+  },
 
   output: {
     path: resolve(__dirname, './dist'),
     filename: 'bundle.js'
+  },
+
+  externals: {
+    'highlight.js': 'hljs'
   },
 
   module: {
@@ -38,12 +47,22 @@ const COMMON_CONFIG = {
         options: BABEL_CONFIG,
         include: [resolve('..'), libSources],
         exclude: [/node_modules/]
-      }, {
+      },
+      {
         test: /\.scss$/,
-        loaders: ['style-loader', 'css-loader', 'sass-loader']
-      }, {
-        test: /\.(eot|svg|ttf|woff|woff2|gif|jpe?g|png)$/,
-        loader: 'url-loader'
+        use: [
+          // style-loader
+          {loader: 'style-loader'},
+          // css-loader
+          {
+            loader: 'css-loader',
+            options: {
+              url: false
+            }
+          },
+          // sass-loader
+          {loader: 'sass-loader'}
+        ]
       }
     ],
 
@@ -66,21 +85,21 @@ const COMMON_CONFIG = {
   },
 
   plugins: [
-    new webpack.DefinePlugin({
-      MapboxAccessToken: `"${process.env.MapboxAccessToken}"` // eslint-disable-line
-    })
+    // Uncomment to analyze bundle size
+    // new (require('webpack-bundle-analyzer').BundleAnalyzerPlugin)(),
+    new webpack.EnvironmentPlugin(['MapboxAccessToken'])
   ]
-
 };
 
 const addDevConfig = config => {
-
   config.module.rules.push({
     // Unfortunately, webpack doesn't import library sourcemaps on its own...
     test: /\.js$/,
     use: ['source-map-loader'],
     enforce: 'pre'
   });
+
+  config.devServer.contentBase.push(resolve(__dirname, '../'));
 
   return Object.assign(config, {
     mode: 'development',
@@ -91,14 +110,21 @@ const addDevConfig = config => {
       new webpack.NoEmitOnErrorsPlugin(),
       new webpack.DefinePlugin({
         USE_LOCAL_PAGES: true // eslint-disable-line
+      }),
+      new webpack.DefinePlugin({
+        DOCS_DIR: JSON.stringify('.')
       })
     ])
-
   });
-
 };
 
 const addProdConfig = config => {
+  config.plugins = config.plugins.concat(
+    new webpack.DefinePlugin({
+      __VERSION__: JSON.stringify(packageVersion),
+      DOCS_DIR: JSON.stringify('https://raw.githubusercontent.com/uber/deck.gl/7.1-release')
+    })
+  );
 
   return Object.assign(config, {
     mode: 'production'

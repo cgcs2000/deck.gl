@@ -52,9 +52,9 @@ export {
   // Shader modules
   project,
   project64,
-  lighting,
   // Internal classes
   LayerManager,
+  DeckRenderer,
   // Logging
   log,
   // Controllers
@@ -65,27 +65,36 @@ export {
   LinearInterpolator,
   FlyToInterpolator,
   // Effects
-  _EffectManager,
-  _Effect,
-  _ReflectionEffect
+  Effect,
+  LightingEffect,
+  PostProcessEffect,
+  // Lights
+  AmbientLight,
+  PointLight,
+  DirectionalLight
 } from '@cgcs2000/deck.gl.core';
 
 // EXPERIMENTAL CORE LIB CLASSES (May change in minor version bumps, use at your own risk)
 import {experimental as CoreExperimental} from '@cgcs2000/deck.gl.core';
+import {experimental as AggregationExperimental} from '@cgcs2000/deck.gl.aggregation-layers';
 
 // Experimental Data Accessor Helpers
 // INTERNAL - TODO remove from experimental exports
 const {
   // For layers
+  count,
+  flattenVertices,
+  fillArray
+} = CoreExperimental;
+
+const {
   BinSorter,
   linearScale,
   getLinearScale,
   quantizeScale,
   getQuantizeScale,
-  defaultColorRange,
-  flattenVertices,
-  fillArray
-} = CoreExperimental;
+  defaultColorRange
+} = AggregationExperimental;
 
 Object.assign(experimental, {
   // For layers
@@ -95,30 +104,50 @@ Object.assign(experimental, {
   quantizeScale,
   getQuantizeScale,
   defaultColorRange,
+  count,
   flattenVertices,
   fillArray
 });
 
 //
-// CORE LAYERS PACKAGE
+// LAYERS PACKAGES
 //
 
 export {
   ArcLayer,
+  BitmapLayer,
   IconLayer,
   LineLayer,
   PointCloudLayer,
   ScatterplotLayer,
-  ScreenGridLayer,
-  GridLayer,
   GridCellLayer,
-  HexagonLayer,
-  HexagonCellLayer,
+  ColumnLayer,
   PathLayer,
   PolygonLayer,
+  SolidPolygonLayer,
   GeoJsonLayer,
   TextLayer
 } from '@cgcs2000/deck.gl.layers';
+
+export {
+  ScreenGridLayer,
+  CPUGridLayer,
+  HexagonLayer,
+  ContourLayer,
+  GridLayer,
+  GPUGridLayer
+} from '@cgcs2000/deck.gl.aggregation-layers';
+
+export {
+  GreatCircleLayer,
+  S2Layer,
+  H3ClusterLayer,
+  H3HexagonLayer,
+  TileLayer,
+  TripsLayer
+} from '@cgcs2000/deck.gl.geo-layers';
+
+export {SimpleMeshLayer, ScenegraphLayer} from '@cgcs2000/deck.gl.mesh-layers';
 
 //
 // REACT BINDINGS PACKAGE

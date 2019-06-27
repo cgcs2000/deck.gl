@@ -2,7 +2,7 @@
   <head>
     <title>deck.gl PointCloudLayer Example</title>
 
-    <script src="https://unpkg.com/deck.gl@^6.0.0/deckgl.min.js"></script>
+    <script src="https://unpkg.com/deck.gl@^7.0.0/dist.min.js"></script>
 
     <style type="text/css">
       body {
@@ -64,7 +64,7 @@
 
     new DeckGL({
       views: [new OrbitView()],
-      viewState: {fov: 50, distance: 10, rotationX: 45, rotationOrbit: 45, zoom: 1},
+      viewState: {rotationX: -45, rotationOrbit: -45, zoom: 5},
       layers: [
         new PointCloudLayer({
           id: 'pointCloud',
@@ -74,14 +74,7 @@
           getPosition: d => d.position,
           getNormal: d => d.normal,
           getColor: d => d.color,
-          radiusPixels: 10,
-          lightSettings: {
-            coordinateSystem: COORDINATE_SYSTEM.IDENTITY,
-            lightsPosition: [20, 100, 100, 50, 0, 0],
-            lightsStrength: [1, 0, 2, 0],
-            numberOfLights: 2,
-            ambientRatio: 0.2
-          }
+          radiusPixels: 1
         })
       ]
     });

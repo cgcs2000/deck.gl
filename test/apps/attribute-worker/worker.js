@@ -1,7 +1,7 @@
 /* global fetch */
 import TEST_CASES from './test-cases';
-import {LayerManager} from '@deck.gl/core';
-import * as Layers from '@deck.gl/layers';
+import {LayerManager} from '@cgcs2000/deck.gl.core';
+import * as Layers from '@cgcs2000/deck.gl.layers';
 
 export default self => {
   self.onmessage = evt => {

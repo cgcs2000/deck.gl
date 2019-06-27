@@ -20,8 +20,8 @@
 
 import test from 'tape-catch';
 
-import * as Polygon from '@deck.gl/layers/solid-polygon-layer/polygon';
-import PolygonTesselator from '@deck.gl/layers/solid-polygon-layer/polygon-tesselator';
+import * as Polygon from '@cgcs2000/deck.gl.layers/solid-polygon-layer/polygon';
+import PolygonTesselator from '@cgcs2000/deck.gl.layers/solid-polygon-layer/polygon-tesselator';
 
 const SAMPLE_DATA = [
   {polygon: [], name: 'empty array'},
@@ -198,35 +198,65 @@ test('PolygonTesselator#tesselation', t => {
   t.end();
 });
 
-test('PolygonTesselator#methods', t => {
-  TEST_DATA.forEach(testData => {
-    t.comment(`Polygon data: ${testData.title}`);
-    const tesselator = new PolygonTesselator(testData);
-
-    const elevations = tesselator.get(
-      'elevations',
-      new Float32Array(tesselator.instanceCount),
-      d => d.height || 0
-    );
-    t.ok(ArrayBuffer.isView(elevations), 'PolygonTesselator.get elevations');
-    t.deepEquals(elevations.slice(0, 8), [1, 2, 2, 2, 2, 0, 0, 0], 'elevations are filled');
-
-    const colors = tesselator.get(
-      'colors',
-      new Uint8ClampedArray(tesselator.instanceCount * 4),
-      d => [255, 0, 0]
-    );
-    t.ok(ArrayBuffer.isView(colors), 'PolygonTesselator.get colors');
-    t.deepEquals(colors.slice(0, 8), [255, 0, 0, 255, 255, 0, 0, 255], 'colors are filled');
-
-    const pickingColors = tesselator.get(
-      'pickingColors',
-      new Uint8ClampedArray(tesselator.instanceCount * 3),
-      index => [0, 0, index]
-    );
-    t.ok(ArrayBuffer.isView(pickingColors), 'PolygonTesselator.get pickingColors');
-    t.deepEquals(pickingColors.slice(0, 6), [0, 0, 1, 0, 0, 2], 'pickingColors are filled');
+/* eslint-disable max-statements */
+test('PolygonTesselator#partial update', t => {
+  const accessorCalled = new Set();
+  const sampleData = [
+    {polygon: [[1, 1], [2, 2], [3, 0]], id: 'A'},
+    {polygon: [[[0, 0], [2, 0], [2, 2], [0, 2]]], id: 'B'}
+  ];
+  const tesselator = new PolygonTesselator({
+    data: sampleData,
+    getGeometry: d => {
+      accessorCalled.add(d.id);
+      return d.polygon;
+    },
+    positionFormat: 'XY'
   });
+
+  let positions = tesselator.get('positions').slice(0, 27);
+  let indices = tesselator.get('indices');
+  t.is(tesselator.instanceCount, 9, 'Initial instance count');
+  t.is(tesselator.vertexCount, 9, 'Initial vertex count');
+  // prettier-ignore
+  t.deepEquals(positions, [
+    1, 1, 0, 2, 2, 0, 3, 0, 0, 1, 1, 0,
+    0, 0, 0, 2, 0, 0, 2, 2, 0, 0, 2, 0, 0, 0, 0
+  ], 'positions');
+  t.deepEquals(indices, [1, 3, 2, 7, 4, 5, 5, 6, 7], 'incides');
+  t.deepEquals(Array.from(accessorCalled), ['A', 'B'], 'Accessor called on all data');
+
+  sampleData[2] = {polygon: [[4, 4], [5, 5], [6, 4]], id: 'C'};
+  accessorCalled.clear();
+  tesselator.updatePartialGeometry({startRow: 2});
+  positions = tesselator.get('positions').slice(0, 39);
+  indices = tesselator.get('indices');
+  t.is(tesselator.instanceCount, 13, 'Updated instance count');
+  t.is(tesselator.vertexCount, 12, 'Updated vertex count');
+  // prettier-ignore
+  t.deepEquals(positions, [
+    1, 1, 0, 2, 2, 0, 3, 0, 0, 1, 1, 0,
+    0, 0, 0, 2, 0, 0, 2, 2, 0, 0, 2, 0, 0, 0, 0,
+    4, 4, 0, 5, 5, 0, 6, 4, 0, 4, 4, 0
+  ], 'positions');
+  t.deepEquals(indices, [1, 3, 2, 7, 4, 5, 5, 6, 7, 10, 12, 11], 'incides');
+  t.deepEquals(Array.from(accessorCalled), ['C'], 'Accessor called only on partial data');
+
+  sampleData[0] = {polygon: [[2, 2], [3, 0], [1, 1]], id: 'A'};
+  accessorCalled.clear();
+  tesselator.updatePartialGeometry({startRow: 0, endRow: 1});
+  positions = tesselator.get('positions').slice(0, 39);
+  indices = tesselator.get('indices').slice(0, 12);
+  t.is(tesselator.instanceCount, 13, 'Updated instance count');
+  t.is(tesselator.vertexCount, 12, 'Updated vertex count');
+  // prettier-ignore
+  t.deepEquals(positions, [
+    2, 2, 0, 3, 0, 0, 1, 1, 0, 2, 2, 0,
+    0, 0, 0, 2, 0, 0, 2, 2, 0, 0, 2, 0, 0, 0, 0,
+    4, 4, 0, 5, 5, 0, 6, 4, 0, 4, 4, 0
+  ], 'positions');
+  t.deepEquals(indices, [1, 3, 2, 7, 4, 5, 5, 6, 7, 10, 12, 11], 'incides');
+  t.deepEquals(Array.from(accessorCalled), ['A'], 'Accessor called only on partial data');
 
   t.end();
 });

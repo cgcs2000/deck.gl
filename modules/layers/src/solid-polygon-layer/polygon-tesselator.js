@@ -26,12 +26,8 @@
 import * as Polygon from './polygon';
 import {experimental} from '@cgcs2000/deck.gl.core';
 const {Tesselator} = experimental;
-import {fp64 as fp64Module} from 'luma.gl';
+import {fp64 as fp64Module} from '@luma.gl/core';
 const {fp64LowPart} = fp64Module;
-
-// colorArray is used to copy over color values if the passed color is an RGB
-// array instead of RGBA
-const colorArray = [0, 0, 0, 255];
 
 // This class is set up to allow querying one attribute at a time
 // the way the AttributeManager expects it
@@ -52,49 +48,12 @@ export default class PolygonTesselator extends Tesselator {
   }
 
   /* Getters */
-  get(attributeName, target, accessor) {
+  get(attributeName) {
     if (attributeName === 'indices') {
       return this.attributes.indices.subarray(0, this.vertexCount);
     }
 
-    if (this.attributes[attributeName]) {
-      return this.attributes[attributeName];
-    }
-
-    switch (attributeName) {
-      case 'elevations':
-        return this._updateAttribute({
-          target,
-          size: 1,
-          getValue: object => [accessor(object)]
-        });
-
-      case 'colors':
-        return this._updateAttribute({
-          target,
-          size: 4,
-          getValue: object => {
-            const color = accessor(object);
-            if (color.length === 4) {
-              return color;
-            }
-            colorArray[0] = color[0];
-            colorArray[1] = color[1];
-            colorArray[2] = color[2];
-            return colorArray;
-          }
-        });
-
-      case 'pickingColors':
-        return this._updateAttribute({
-          target,
-          size: 3,
-          getValue: (object, index) => accessor(index)
-        });
-
-      default:
-        return null;
-    }
+    return this.attributes[attributeName];
   }
 
   /* Implement base Tesselator interface */

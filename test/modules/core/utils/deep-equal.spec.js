@@ -1,5 +1,5 @@
 import test from 'tape-catch';
-import {deepEqual} from '@deck.gl/core/utils/deep-equal';
+import {deepEqual} from '@cgcs2000/deck.gl.core/utils/deep-equal';
 
 const TEST_CASES = [
   {

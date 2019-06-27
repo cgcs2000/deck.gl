@@ -1,6 +1,6 @@
 /* global document */
-import {Deck} from '@deck.gl/core';
-import * as Layers from '@deck.gl/layers';
+import {Deck} from '@cgcs2000/deck.gl.core';
+import * as Layers from '@cgcs2000/deck.gl.layers';
 import createWorker from 'webworkify-webpack';
 
 import TEST_CASES from './test-cases';

@@ -2,14 +2,11 @@
   <a href="https://npmjs.org/package/deck.gl">
     <img src="https://img.shields.io/npm/v/deck.gl.svg?style=flat-square" alt="version" />
   </a>
-  <a href="https://travis-ci.org/uber/deck.gl">
-    <img src="https://img.shields.io/travis/uber/deck.gl/master.svg?style=flat-square" alt="build" />
+  <a href="https://travis-ci.com/uber/deck.gl">
+    <img src="https://api.travis-ci.com/uber/deck.gl.svg?branch=master" alt="build" />
   </a>
   <a href="https://npmjs.org/package/deck.gl">
     <img src="https://img.shields.io/npm/dm/deck.gl.svg?style=flat-square" alt="downloads" />
-  </a>
-  <a href="http://starveller.sigsev.io/uber/deck.gl">
-    <img src="http://starveller.sigsev.io/api/repos/uber/deck.gl/badge" alt="stars" />
   </a>
   <a href='https://coveralls.io/github/uber/deck.gl?branch=master'>
     <img src='https://img.shields.io/coveralls/uber/deck.gl.svg?style=flat-square' alt='Coverage Status' />
@@ -99,7 +96,16 @@ PRs and bug reports are welcome, and we are actively opening up the deck.gl [roa
 
 Note that you once your PR is about to be merged, you will be asked to register as a contributor by filling in a short form.
 
+## Attributions
 
-## Data sources
+#### Data sources
 
 Data sources are listed in each example.
+
+
+#### The deck.gl project is supported by
+
+<a href="https://www.browserstack.com/">
+ <img src="https://d98b8t1nnulk5.cloudfront.net/production/images/static/logo.svg" alt="BrowserStack" width="200" />
+</a>
+

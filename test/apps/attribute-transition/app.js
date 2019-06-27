@@ -2,14 +2,7 @@
 /* eslint-disable no-console */
 import React, {Component} from 'react';
 import {render} from 'react-dom';
-import {StaticMap} from 'react-map-gl';
-import DeckGL, {
-  COORDINATE_SYSTEM,
-  MapView,
-  ScatterplotLayer,
-  PolygonLayer,
-  MapController
-} from 'deck.gl';
+import DeckGL, {COORDINATE_SYSTEM, ScatterplotLayer, PolygonLayer, MapController} from 'deck.gl';
 
 import DataGenerator from './data-generator';
 
@@ -53,12 +46,12 @@ class Root extends Component {
         coordinateOrigin: MAP_CENTER,
         data: points,
         getPosition: d => d.position,
-        getColor: d => d.color,
+        getFillColor: d => d.color,
         getRadius: d => d.radius,
         transitions: {
           getPosition: 600,
           getRadius: 600,
-          getColor: 600
+          getFillColor: 600
         }
       }),
       new PolygonLayer({
@@ -83,19 +76,11 @@ class Root extends Component {
     return (
       <div>
         <DeckGL
-          views={new MapView({id: 'map'})}
           controller={MapController}
           viewState={viewState}
           onViewStateChange={evt => this.setState({viewState: evt.viewState})}
           layers={layers}
-        >
-          <StaticMap
-            viewId="map"
-            {...viewState}
-            mapStyle="mapbox://styles/mapbox/light-v9"
-            mapboxApiAccessToken={MAPBOX_TOKEN}
-          />
-        </DeckGL>
+        />
         <div id="control-panel">
           <button onClick={this._randomize}>Randomize</button>
         </div>

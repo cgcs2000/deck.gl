@@ -1,0 +1,37 @@
+{
+  "name": "@cgcs2000/deck.gl.jupyter-widget",
+  "description": "Jupyter widget for rendering deck.gl in a Jupyter notebook",
+  "license": "MIT",
+  "version": "7.1.7",
+  "keywords": [
+    "jupyter",
+    "jupyterlab",
+    "jupyterlab-extension",
+    "widgets",
+    "geospatial"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/uber/deck.gl.git"
+  },
+  "main": "dist/pydeck_embeddable/index.js",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "echo No operation. This package is not currently built for distribution on NPM",
+    "notebook-bundle": "webpack"
+  },
+  "dependencies": {
+    "@cgcs2000/deck.gl.aggregation-layers": "7.1.7",
+    "@cgcs2000/deck.gl.core": "7.1.7",
+    "@cgcs2000/deck.gl.json": "7.1.7",
+    "@cgcs2000/deck.gl.layers": "7.1.7",
+    "@jupyter-widgets/base": "^1.1.10",
+    "mapbox-gl": "^0.53.1"
+  },
+  "private": true
+}

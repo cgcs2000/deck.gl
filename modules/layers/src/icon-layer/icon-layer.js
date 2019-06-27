@@ -17,9 +17,10 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-import {Layer} from '@cgcs2000/deck.gl.core';
-import GL from 'luma.gl/constants';
-import {Model, Geometry, fp64} from 'luma.gl';
+import {Layer, createIterable} from '@cgcs2000/deck.gl.core';
+import GL from '@luma.gl/constants';
+import {Model, Geometry, fp64} from '@luma.gl/core';
+
 const {fp64LowPart} = fp64;
 
 import vs from './icon-layer-vertex.glsl';
@@ -55,6 +56,10 @@ const defaultProps = {
   iconMapping: {type: 'object', value: {}, async: true},
   sizeScale: {type: 'number', value: 1, min: 0},
   fp64: false,
+  billboard: true,
+  sizeUnits: 'pixels',
+  sizeMinPixels: {type: 'number', min: 0, value: 0}, //  min point radius in pixels
+  sizeMaxPixels: {type: 'number', min: 0, value: Number.MAX_SAFE_INTEGER}, // max point radius in pixels
 
   getPosition: {type: 'accessor', value: x => x.position},
   getIcon: {type: 'accessor', value: x => x.icon},
@@ -169,19 +174,32 @@ export default class IconLayer extends Layer {
   }
   /* eslint-enable max-statements, complexity */
 
+  finalizeState() {
+    super.finalizeState();
+    // Release resources held by the icon manager
+    this.state.iconManager.finalize();
+  }
+
   draw({uniforms}) {
-    const {sizeScale} = this.props;
+    const {sizeScale, sizeMinPixels, sizeMaxPixels, sizeUnits, billboard} = this.props;
     const {iconManager} = this.state;
+    const {viewport} = this.context;
 
     const iconsTexture = iconManager.getTexture();
     if (iconsTexture) {
-      this.state.model.render(
-        Object.assign({}, uniforms, {
-          iconsTexture,
-          iconsTextureDim: [iconsTexture.width, iconsTexture.height],
-          sizeScale
-        })
-      );
+      this.state.model
+        .setUniforms(
+          Object.assign({}, uniforms, {
+            iconsTexture,
+            iconsTextureDim: [iconsTexture.width, iconsTexture.height],
+            sizeScale:
+              sizeScale * (sizeUnits === 'pixels' ? viewport.distanceScales.metersPerPixel[2] : 1),
+            sizeMinPixels,
+            sizeMaxPixels,
+            billboard
+          })
+        )
+        .draw();
     }
   }
 
@@ -220,44 +238,52 @@ export default class IconLayer extends Layer {
     const {data, getPosition} = this.props;
     const {value} = attribute;
     let i = 0;
-    for (const point of data) {
-      const position = getPosition(point);
+    const {iterable, objectInfo} = createIterable(data);
+    for (const object of iterable) {
+      objectInfo.index++;
+      const position = getPosition(object, objectInfo);
       value[i++] = fp64LowPart(position[0]);
       value[i++] = fp64LowPart(position[1]);
     }
   }
 
-  calculateInstanceOffsets(attribute) {
+  calculateInstanceOffsets(attribute, {startRow, endRow}) {
     const {data} = this.props;
     const {iconManager} = this.state;
-    const {value} = attribute;
-    let i = 0;
-    for (const object of data) {
-      const rect = iconManager.getIconMapping(object);
+    const {value, size} = attribute;
+    let i = startRow * size;
+    const {iterable, objectInfo} = createIterable(data, startRow, endRow);
+    for (const object of iterable) {
+      objectInfo.index++;
+      const rect = iconManager.getIconMapping(object, objectInfo);
       value[i++] = rect.width / 2 - rect.anchorX || 0;
       value[i++] = rect.height / 2 - rect.anchorY || 0;
     }
   }
 
-  calculateInstanceColorMode(attribute) {
+  calculateInstanceColorMode(attribute, {startRow, endRow}) {
     const {data} = this.props;
     const {iconManager} = this.state;
-    const {value} = attribute;
-    let i = 0;
-    for (const object of data) {
-      const mapping = iconManager.getIconMapping(object);
+    const {value, size} = attribute;
+    let i = startRow * size;
+    const {iterable, objectInfo} = createIterable(data, startRow, endRow);
+    for (const object of iterable) {
+      objectInfo.index++;
+      const mapping = iconManager.getIconMapping(object, objectInfo);
       const colorMode = mapping.mask;
       value[i++] = colorMode ? 1 : 0;
     }
   }
 
-  calculateInstanceIconFrames(attribute) {
+  calculateInstanceIconFrames(attribute, {startRow, endRow}) {
     const {data} = this.props;
     const {iconManager} = this.state;
-    const {value} = attribute;
-    let i = 0;
-    for (const object of data) {
-      const rect = iconManager.getIconMapping(object);
+    const {value, size} = attribute;
+    let i = startRow * size;
+    const {iterable, objectInfo} = createIterable(data, startRow, endRow);
+    for (const object of iterable) {
+      objectInfo.index++;
+      const rect = iconManager.getIconMapping(object, objectInfo);
       value[i++] = rect.x || 0;
       value[i++] = rect.y || 0;
       value[i++] = rect.width || 0;

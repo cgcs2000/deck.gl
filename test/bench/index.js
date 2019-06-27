@@ -19,7 +19,7 @@
 // THE SOFTWARE.
 
 /* eslint-disable no-console, no-invalid-this */
-import {Bench} from 'probe.gl/bench';
+import {Bench} from '@probe.gl/bench';
 
 import layerBench from './layer.bench';
 import coreLayersBench from './core-layers.bench';
@@ -30,8 +30,10 @@ import tesselationBench from './tesselation.bench';
 import gridAggregatorBench from './gpu-grid-aggregator.bench';
 import utilsBench from './utils.bench';
 import arrayCopyBench from './array-copy.bench';
+import attributeUpdateBench from './attribute-update.bench';
+import comparePropsBench from './compare-props.bench';
 
-const suite = new Bench();
+const suite = new Bench({});
 
 // add tests
 layerBench(suite);
@@ -43,6 +45,8 @@ pickLayersBench(suite);
 tesselationBench(suite);
 gridAggregatorBench(suite);
 arrayCopyBench(suite);
+attributeUpdateBench(suite);
+comparePropsBench(suite);
 
 // Run the suite
 suite.run();

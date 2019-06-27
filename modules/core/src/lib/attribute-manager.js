@@ -146,9 +146,9 @@ export default class AttributeManager {
   //
   // @param {String} [clearRedrawFlags=false] - whether to clear the flag
   // @return {false|String} - reason a redraw is needed.
-  getNeedsRedraw({clearRedrawFlags = false} = {}) {
+  getNeedsRedraw(opts = {clearRedrawFlags: false}) {
     const redraw = this.needsRedraw;
-    this.needsRedraw = this.needsRedraw && !clearRedrawFlags;
+    this.needsRedraw = this.needsRedraw && !opts.clearRedrawFlags;
     return redraw && this.id;
   }
 
@@ -191,8 +191,8 @@ export default class AttributeManager {
   }
 
   // Marks an attribute for update
-  invalidate(triggerName) {
-    const invalidatedAttributes = this._invalidateTrigger(triggerName);
+  invalidate(triggerName, dataRange) {
+    const invalidatedAttributes = this._invalidateTrigger(triggerName, dataRange);
     // For performance tuning
     logFunctions.onLog({
       level: LOG_DETAIL_PRIORITY,
@@ -200,9 +200,9 @@ export default class AttributeManager {
     });
   }
 
-  invalidateAll() {
+  invalidateAll(dataRange) {
     for (const attributeName in this.attributes) {
-      this.attributes[attributeName].setNeedsUpdate();
+      this.attributes[attributeName].setNeedsUpdate(attributeName, dataRange);
     }
     // For performance tuning
     logFunctions.onLog({
@@ -212,13 +212,21 @@ export default class AttributeManager {
   }
 
   // Ensure all attribute buffers are updated from props or data.
-  update({data, numInstances, transitions, props = {}, buffers = {}, context = {}} = {}) {
+  update({
+    data,
+    numInstances,
+    bufferLayout,
+    transitions,
+    props = {},
+    buffers = {},
+    context = {}
+  } = {}) {
     // keep track of whether some attributes are updated
     let updated = false;
 
     logFunctions.onUpdateStart({level: LOG_START_END_PRIORITY, id: this.id, numInstances});
     if (this.stats) {
-      this.stats.timeStart('attribute updates', this.id);
+      this.stats.get('Update Attributes').timeStart();
     }
 
     for (const attributeName in this.attributes) {
@@ -230,7 +238,14 @@ export default class AttributeManager {
         // Attribute is using generic value from the props
       } else if (attribute.needsUpdate()) {
         updated = true;
-        this._updateAttribute({attribute, numInstances, data, props, context});
+        this._updateAttribute({
+          attribute,
+          numInstances,
+          bufferLayout,
+          data,
+          props,
+          context
+        });
       }
 
       this.needsRedraw |= attribute.needsRedraw();
@@ -238,10 +253,11 @@ export default class AttributeManager {
 
     if (updated) {
       // Only initiate alloc/update (and logging) if actually needed
-      if (this.stats) {
-        this.stats.timeEnd('attribute updates', this.id);
-      }
       logFunctions.onUpdateEnd({level: LOG_START_END_PRIORITY, id: this.id, numInstances});
+    }
+
+    if (this.stats) {
+      this.stats.get('Update Attributes').timeEnd();
     }
 
     this.attributeTransitionManager.update({
@@ -253,9 +269,9 @@ export default class AttributeManager {
 
   // Update attribute transition to the current timestamp
   // Returns `true` if any transition is in progress
-  updateTransition() {
+  updateTransition(timestamp) {
     const {attributeTransitionManager} = this;
-    const transitionUpdated = attributeTransitionManager.setCurrentTime(Date.now());
+    const transitionUpdated = attributeTransitionManager.setCurrentTime(timestamp);
     this.needsRedraw = this.needsRedraw || transitionUpdated;
     return transitionUpdated;
   }
@@ -271,23 +287,21 @@ export default class AttributeManager {
 
   /**
    * Returns changed attribute descriptors
-   * This indicates which WebGLBuggers need to be updated
+   * This indicates which WebGLBuffers need to be updated
    * @return {Object} attributes - descriptors
    */
-  getChangedAttributes({clearChangedFlags = false}) {
+  getChangedAttributes(opts = {clearChangedFlags: false}) {
     const {attributes, attributeTransitionManager} = this;
 
     const changedAttributes = Object.assign({}, attributeTransitionManager.getAttributes());
 
     for (const attributeName in attributes) {
       const attribute = attributes[attributeName];
-      if (attribute.needsRedraw({clearChangedFlags: true})) {
-        // Only return non-transition attributes
-        if (!attributeTransitionManager.hasAttribute(attributeName)) {
-          changedAttributes[attributeName] = attribute;
-        }
+      if (attribute.needsRedraw(opts) && !attributeTransitionManager.hasAttribute(attributeName)) {
+        changedAttributes[attributeName] = attribute;
       }
     }
+
     return changedAttributes;
   }
 
@@ -313,18 +327,9 @@ export default class AttributeManager {
       const attribute = attributes[attributeName];
 
       // Initialize the attribute descriptor, with WebGL and metadata fields
-      newAttributes[attributeName] = new Attribute(
-        this.gl,
-        Object.assign({}, attribute, {
-          id: attributeName,
-          // Luma fields
-          constant: attribute.constant || false,
-          isIndexed: attribute.isIndexed || attribute.elements,
-          size: (attribute.elements && 1) || attribute.size,
-          value: attribute.value || null,
-          instanced: attribute.instanced || extraProps.instanced
-        })
-      );
+      const newAttribute = this._createAttribute(attributeName, attribute, extraProps);
+
+      newAttributes[attributeName] = newAttribute;
     }
 
     Object.assign(this.attributes, newAttributes);
@@ -332,6 +337,20 @@ export default class AttributeManager {
     this._mapUpdateTriggersToAttributes();
   }
   /* eslint-enable max-statements */
+
+  _createAttribute(name, attribute, extraProps) {
+    const props = {
+      id: name,
+      // Luma fields
+      constant: attribute.constant || false,
+      isIndexed: attribute.isIndexed || attribute.elements,
+      size: (attribute.elements && 1) || attribute.size,
+      value: attribute.value || null,
+      divisor: attribute.instanced || extraProps.instanced ? 1 : attribute.divisor
+    };
+
+    return new Attribute(this.gl, Object.assign({}, attribute, props));
+  }
 
   // build updateTrigger name to attribute name mapping
   _mapUpdateTriggersToAttributes() {
@@ -350,7 +369,7 @@ export default class AttributeManager {
     this.updateTriggers = triggers;
   }
 
-  _invalidateTrigger(triggerName) {
+  _invalidateTrigger(triggerName, dataRange) {
     const {attributes, updateTriggers} = this;
     const invalidatedAttributes = updateTriggers[triggerName];
 
@@ -358,7 +377,7 @@ export default class AttributeManager {
       invalidatedAttributes.forEach(name => {
         const attribute = attributes[name];
         if (attribute) {
-          attribute.setNeedsUpdate();
+          attribute.setNeedsUpdate(attribute.id, dataRange);
         }
       });
     } else {
@@ -369,7 +388,9 @@ export default class AttributeManager {
     return invalidatedAttributes;
   }
 
-  _updateAttribute({attribute, numInstances, data, props, context}) {
+  _updateAttribute(opts) {
+    const {attribute, numInstances} = opts;
+
     if (attribute.allocate(numInstances)) {
       logFunctions.onUpdate({
         level: LOG_DETAIL_PRIORITY,
@@ -381,7 +402,7 @@ export default class AttributeManager {
     // Calls update on any buffers that need update
     const timeStart = Date.now();
 
-    const updated = attribute.updateBuffer({numInstances, data, props, context});
+    const updated = attribute.updateBuffer(opts);
     if (updated) {
       this.needsRedraw = true;
 

@@ -1,8 +1,8 @@
 {
-  "name": "@cgcs2000/deck.gl",
+  "name": "deck.gl",
   "description": "A suite of 3D-enabled data visualization overlays, suitable for react-map-gl",
   "license": "MIT",
-  "version": "6.4.7",
+  "version": "7.1.7",
   "keywords": [
     "webgl",
     "visualization",
@@ -18,18 +18,23 @@
   "esnext": "dist/es6/index.js",
   "files": [
     "dist",
-    "deckgl.min.js",
     "src",
-    "README.md"
+    "dist.min.js"
   ],
+  "sideEffects": false,
   "scripts": {
-    "build": "./build.sh",
-    "prepublishOnly": "npm run build"
+    "build-bundle": "webpack --config ../../scripts/bundle.config.js",
+    "prepublishOnly": "npm run build-bundle && npm run build-bundle -- --env.dev"
   },
   "dependencies": {
-    "@babel/cli": "^7.2.3",
-    "@cgcs2000/deck.gl.core": "^6.4.7-a",
-    "@cgcs2000/deck.gl.layers": "^6.4.7-a",
-    "@cgcs2000/deck.gl.react": "^6.4.7-a"
+    "@cgcs2000/deck.gl.aggregation-layers": "7.1.7",
+    "@cgcs2000/deck.gl.core": "7.1.7",
+    "@cgcs2000/deck.gl.geo-layers": "7.1.7",
+    "@cgcs2000/deck.gl.google-maps": "7.1.7",
+    "@cgcs2000/deck.gl.json": "7.1.7",
+    "@cgcs2000/deck.gl.layers": "7.1.7",
+    "@cgcs2000/deck.gl.mapbox": "7.1.7",
+    "@cgcs2000/deck.gl.mesh-layers": "7.1.7",
+    "@cgcs2000/deck.gl.react": "7.1.7"
   }
 }

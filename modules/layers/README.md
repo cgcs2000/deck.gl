@@ -1,4 +1,4 @@
-# @deck.gl/layers
+# @cgcs2000/deck.gl.layers
 
 This is the core layer catalog for deck.gl.
 

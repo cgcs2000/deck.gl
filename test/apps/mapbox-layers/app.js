@@ -1,5 +1,5 @@
 import mapboxgl from 'mapbox-gl';
-import {MapboxLayer} from '@deck.gl/mapbox';
+import {MapboxLayer} from '@cgcs2000/deck.gl.mapbox';
 
 import {mapboxBuildingLayer, deckPoiLayer, deckRouteLayer} from './layers';
 

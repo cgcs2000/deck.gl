@@ -1,5 +1,5 @@
 import test from 'tape-catch';
-import Transition, {TRANSITION_STATE} from '@deck.gl/core/transitions/transition';
+import Transition, {TRANSITION_STATE} from '@cgcs2000/deck.gl.core/transitions/transition';
 
 test('Transition#constructor', t => {
   let transition = new Transition();

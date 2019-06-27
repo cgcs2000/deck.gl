@@ -1,6 +1,6 @@
 import test from 'tape-catch';
-import TransitionManager from '@deck.gl/core/controllers/transition-manager';
-import {testExports} from '@deck.gl/core/controllers/map-controller';
+import TransitionManager from '@cgcs2000/deck.gl.core/controllers/transition-manager';
+import {testExports} from '@cgcs2000/deck.gl.core/controllers/map-controller';
 const {MapState} = testExports;
 
 /* global global, setTimeout, clearTimeout */
@@ -174,11 +174,14 @@ test('TransitionManager#callbacks', t => {
     transitionManager.processViewStateChange(transitionProps);
   });
 
-  setTimeout(() => {
-    t.is(startCount, 2, 'onTransitionStart() called twice');
-    t.is(interruptCount, 1, 'onTransitionInterrupt() called once');
-    t.is(endCount, 1, 'onTransitionEnd() called once');
-    t.ok(updateCount > 2, 'onViewStateChange() called');
-    t.end();
-  }, 1000);
+  transitionManager.updateTransition(200);
+  transitionManager.updateTransition(400);
+  transitionManager.updateTransition(600);
+  transitionManager.updateTransition(800);
+
+  t.is(startCount, 2, 'onTransitionStart() called twice');
+  t.is(interruptCount, 1, 'onTransitionInterrupt() called once');
+  t.is(endCount, 1, 'onTransitionEnd() called once');
+  t.is(updateCount, 3, 'onViewStateChange() called');
+  t.end();
 });

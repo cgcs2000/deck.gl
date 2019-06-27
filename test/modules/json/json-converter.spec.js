@@ -1,13 +1,13 @@
 import test from 'tape-catch';
-import {Deck} from '@deck.gl/core';
-import {_JSONConverter as JSONConverter} from '@deck.gl/json';
+import {Deck} from '@cgcs2000/deck.gl.core';
+import {_JSONConverter as JSONConverter, _JSONLayer as JSONLayer} from '@cgcs2000/deck.gl.json';
 
-import {COORDINATE_SYSTEM} from '@deck.gl/core';
-import {GL} from 'luma.gl/constants';
+import {COORDINATE_SYSTEM} from '@cgcs2000/deck.gl.core';
+import GL from '@luma.gl/constants';
 
-const configuration = {
+export const configuration = {
   // a map of all layers that should be exposes as JSONLayers
-  layers: Object.assign({}, require('@deck.gl/layers')),
+  layers: Object.assign({}, require('@cgcs2000/deck.gl.layers')),
   // Any non-standard views
   views: {},
   // Enumerations that should be available to JSON parser
@@ -18,22 +18,38 @@ const configuration = {
   }
 };
 
-const JSON_DATA = {
+export const JSON_DATA = {
   initialViewState: {
     longitude: -122.45,
     latitude: 37.8,
     zoom: 12
   },
+  mapStyle: {},
+  views: [
+    {
+      type: 'MapView',
+      height: '50%',
+      controller: true
+    },
+    {
+      type: 'FirstPersonView',
+      y: '50%',
+      height: '50%'
+    }
+  ],
   layers: [
     {
       type: 'ScatterplotLayer',
       data: [{position: [-122.45, 37.8]}],
+      getPosition: 'position',
       getColor: [255, 0, 0, 255],
       getRadius: 1000
     },
     {
       type: 'TextLayer',
-      data: [{position: [-122.45, 37.8], text: 'Hello World'}]
+      data: [[-122.45, 37.8]],
+      getPosition: '-',
+      getText: d => 'Hello World'
     }
   ]
 };
@@ -55,18 +71,39 @@ test('JSONConverter#convert', t => {
 
   const deckProps = jsonConverter.convertJsonToDeckProps(JSON_DATA);
   t.ok(deckProps, 'JSONConverter converted correctly');
+
+  t.is(deckProps.views.length, 2, 'JSONConverter converted views');
+
+  const layer = deckProps.layers[0];
+  t.is(layer && layer.constructor, JSONLayer, 'JSONConverter created JSONLayer');
+  t.is(layer.props.data.length, 2, 'JSONLayer has data');
+
   t.end();
 });
 
 test('JSONConverter#render', t => {
+  if (typeof document === 'undefined') {
+    t.comment('test only available in browser');
+    t.end();
+    return;
+  }
+
   const jsonConverter = new JSONConverter({configuration});
   t.ok(jsonConverter, 'JSONConverter created');
 
   const deckProps = jsonConverter.convertJsonToDeckProps(JSON_DATA);
   t.ok(deckProps, 'JSONConverter converted correctly');
 
-  const jsonDeck = new Deck(deckProps);
-  t.ok(jsonDeck, 'JSONConverter created');
-  jsonDeck.finalize();
-  t.end();
+  const jsonDeck = new Deck(
+    Object.assign(
+      {
+        onAfterRender: () => {
+          t.ok(jsonDeck, 'JSONConverter rendered');
+          jsonDeck.finalize();
+          t.end();
+        }
+      },
+      deckProps
+    )
+  );
 });

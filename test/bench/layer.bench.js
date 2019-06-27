@@ -19,11 +19,11 @@
 // THE SOFTWARE.
 
 /* eslint-disable no-console, no-invalid-this */
-import * as data from 'deck.gl/test/data';
+import * as data from 'deck.gl-test/data';
 
 import {ScatterplotLayer} from 'deck.gl';
 
-// import {testInitializeLayer} from '@deck.gl/test-utils';
+// import {testInitializeLayer} from '@cgcs2000/deck.gl.test-utils';
 
 let testIdx = 0;
 const testLayer = new ScatterplotLayer({data: data.points});

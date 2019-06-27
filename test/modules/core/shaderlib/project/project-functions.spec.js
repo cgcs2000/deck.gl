@@ -21,8 +21,8 @@
 import test from 'tape-catch';
 
 import {COORDINATE_SYSTEM, WebMercatorViewport} from 'deck.gl';
-import {project} from '@deck.gl/core/shaderlib';
-import {projectPosition} from '@deck.gl/core/shaderlib/project/project-functions';
+import {project} from '@cgcs2000/deck.gl.core/shaderlib';
+import {projectPosition} from '@cgcs2000/deck.gl.core/shaderlib/project/project-functions';
 import {equals, config} from 'math.gl';
 
 import {compileVertexShader} from '../shaderlib-test-utils';

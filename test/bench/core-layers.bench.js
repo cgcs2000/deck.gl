@@ -19,13 +19,13 @@
 // THE SOFTWARE.
 
 /* eslint-disable no-console, no-invalid-this */
-import * as data from 'deck.gl/test/data';
+import * as data from 'deck.gl-test/data';
 
 import {ScatterplotLayer, PolygonLayer, PathLayer, GeoJsonLayer, TextLayer} from 'deck.gl';
 
-import {testInitializeLayer} from '@deck.gl/test-utils';
+import {testInitializeLayer} from '@cgcs2000/deck.gl.test-utils';
 
-import SolidPolygonLayer from '@deck.gl/layers/solid-polygon-layer/solid-polygon-layer';
+import SolidPolygonLayer from '@cgcs2000/deck.gl.layers/solid-polygon-layer/solid-polygon-layer';
 
 // add tests
 export default function coreLayersBench(suite) {
